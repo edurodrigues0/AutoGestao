@@ -9,7 +9,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const plans = [
   { id: "basic", name: "Básico", price: "69,90", mechanics: "2 mecânicos" },
   { id: "pro", name: "Pro", price: "149,90", mechanics: "5 mecânicos" },
-  { id: "premium", name: "Premium", price: "249,90", mechanics: "Ilimitado" },
+  { id: "premium", name: "Premium", price: "249,90", mechanics: "Mecânicos ilimitados" },
 ];
 
 export default function Register() {
