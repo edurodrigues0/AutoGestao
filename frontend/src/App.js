@@ -1,6 +1,7 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import PWAInstallBanner from "./components/PWAInstallBanner";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -55,6 +56,7 @@ function App() {
     <AuthProvider>
       <div className="app-container">
         <BrowserRouter>
+          <PWAInstallBanner />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />

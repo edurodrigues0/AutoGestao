@@ -79,7 +79,17 @@ SaaS multi-tenant para gestão de serviços de auto mecânicas com controle indi
 - [x] Checkout Asaas (aguarda API key)
 - [ ] PENDENTE: ASAAS_API_KEY não configurada (sandbox walletId fornecido: 57dd2dd4-bc12-4777-8869-f5e70e83e84d)
 
-## Credenciais Padrão
+## PWA (Progressive Web App)
+- [x] manifest.json com nome, ícones, display standalone, shortcuts
+- [x] Service Worker com cache estratégico (estáticos: cache-first, API: network-first, navegação: network-first)
+- [x] Ícones para Android: 192x192 e 512x512 (normal + maskable)
+- [x] Apple Touch Icon 180x180 para iOS
+- [x] Meta tags iOS: apple-mobile-web-app-capable, status-bar-style, title
+- [x] Theme color #2563EB (barra Android)
+- [x] viewport-fit=cover (notch iOS)
+- [x] Shortcuts no manifest (Registrar Serviço e Dashboard Admin)
+- [x] Banner de instalação Android (beforeinstallprompt)
+- [x] Banner de instruções iOS (como adicionar à tela inicial via Safari)
 - Admin: admin@autogestao.com / admin123
 
 ## Configurações de Ambiente (backend/.env)
