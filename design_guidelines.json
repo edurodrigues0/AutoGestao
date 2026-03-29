@@ -1,0 +1,86 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "design_philosophy": "Utilitarian, clear, and high-performance. The interface is optimized for mechanics operating on mobile devices in potentially poorly lit or bright garage environments. High contrast, large touch targets, and progressive disclosure are essential.",
+  "colors": {
+    "primary": "#0F172A",
+    "primary_foreground": "#FFFFFF",
+    "brand": "#2563EB",
+    "brand_hover": "#1D4ED8",
+    "background": "#F8FAFC",
+    "surface": "#FFFFFF",
+    "border": "#E2E8F0",
+    "success": "#16A34A",
+    "warning": "#EAB308",
+    "danger": "#DC2626",
+    "text_primary": "#0F172A",
+    "text_secondary": "#475569",
+    "text_muted": "#94A3B8"
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "import_url": "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');",
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight font-bold text-slate-900",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-semibold text-slate-900",
+      "h3": "text-xl sm:text-2xl tracking-tight font-semibold text-slate-900",
+      "h4": "text-lg sm:text-xl font-medium text-slate-800",
+      "body": "text-base font-normal text-slate-600 leading-relaxed",
+      "small": "text-sm text-slate-500",
+      "label": "text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+    }
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Use generous spacing for touch targets: p-4 for basic padding, p-6 or p-8 for containers. Inputs and buttons must be at least h-12 for mobile 'fat-finger' tap targets.",
+    "border_radius": "Subtle roundness: rounded-md (6px) or rounded-lg (8px) maximum. No pill-shaped buttons except for badges. Sharp, industrial feel.",
+    "marketing_layout": "Asymmetrical bento grid, large typography, high contrast overlapping sections. Generous white space (py-24).",
+    "dashboard_layout": "Single-column vertical stack on mobile with bottom sticky actions. On desktop, 3 to 4 column grid with strict alignment, tight gaps (gap-4). F-Pattern scanning with primary KPI top-left.",
+    "card_style": "Cardless or minimal cards. Solid white background, 1px border-slate-200, no drop shadows by default. Hover state: slight lift (-translate-y-1) and shadow-md."
+  },
+  "components": {
+    "navigation": "Desktop: Collapsible left sidebar. Mobile: Bottom tab navigation for primary app functions (Home, Add Service, Profile) to allow one-handed operation while working on cars.",
+    "buttons": "Large touch targets. Primary actions in solid Brand Blue (#2563EB). Always explicit text colors on hover. Example: hover:bg-blue-700 hover:text-white.",
+    "forms": "Use Shadcn Form, Input, Select. Labels must be bold and above inputs. Inputs must have clear borders (border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100). Custom camera capture input for adding services.",
+    "tables": "Dense, cardless style on desktop. On mobile, convert tables to vertical card stacks or swipeable list items with progressive disclosure.",
+    "icons": "Phosphor Icons (@phosphor-icons/react). Use 'regular' or 'bold' weights for readability."
+  },
+  "media": {
+    "images": {
+      "hero_landing": {
+        "url": "https://images.unsplash.com/photo-1767339736247-582fcf11442b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwzfHxhdXRvJTIwbWVjaGFuaWMlMjB3b3JraW5nJTIwb24lMjBjYXJ8ZW58MHx8fHwxNzc0ODI0ODE0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Mechanic working on a car engine. Use in the hero section of the landing page with a dark slate overlay (bg-slate-900/40) for text contrast."
+      },
+      "features_section": {
+        "url": "https://images.pexels.com/photos/5276374/pexels-photo-5276374.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Male mechanic working under a lifted car. Use to illustrate the 'mobile-first for mechanics' feature."
+      },
+      "pricing_background": {
+        "url": "https://images.pexels.com/photos/31587448/pexels-photo-31587448.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Abstract corrugated industrial surface. Use as an accent background for the pricing or CTA section with high opacity or blend modes."
+      },
+      "tenant_registration_bg": {
+        "url": "https://images.unsplash.com/photo-1727893119356-1702fe921cf9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwyfHxhdXRvJTIwcmVwYWlyJTIwc2hvcHxlbnwwfHx8fDE3NzQ4MjQ4MTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Red car parked in a garage. Use as a split-screen background image for the login/registration pages."
+      }
+    },
+    "logos": {
+      "brand_icon": "Wrench or Gear icon from Phosphor Icons used alongside 'AutoGestão' text."
+    }
+  },
+  "accessibility_and_motion": {
+    "motion": "Minimal animations. Fast transitions (150ms) for hover states. Page transitions should be simple fades to maintain a snappy, tool-like feel.",
+    "testing_attributes": "All interactive elements MUST include `data-testid` (e.g., data-testid='add-service-button', data-testid='mechanic-login').",
+    "contrast": "Ensure all text meets minimum 4.5:1 ratio against backgrounds. Use dark slate text on light backgrounds and white text on primary buttons."
+  },
+  "instructions_to_main_agent": [
+    "Ensure the app is fully localized in Brazilian Portuguese (pt-BR).",
+    "Install and use `@phosphor-icons/react` for all iconography.",
+    "Implement the UI primarily for mobile. The mechanic dashboard must look like a native app with large buttons and easy-to-read numbers.",
+    "Use Shadcn UI for standard components but override styles to match the 'cardless, dense, industrial' guidelines. Remove excessive borders and shadows.",
+    "The 'Add Service' flow is the most critical path for mechanics: make it a 1-click access from the mechanic dashboard. Implement a camera capture or easy file upload for the photo.",
+    "For the admin dashboard, ensure the ranking and revenue charts (using Recharts) use the primary and success colors clearly.",
+    "When integrating Asaas webhooks and payments, ensure clear feedback states (loading, success, error) for the user.",
+    "For file structure, keep all React code in .js / .jsx. Add data-testid to every form, button, and key metric display."
+  ]
+}
