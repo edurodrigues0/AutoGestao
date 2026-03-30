@@ -57,7 +57,41 @@ def test_billing_plans(session):
     assert "basic" in keys
     assert "pro" in keys
     assert "premium" in keys
-    print(f"Plans OK: {keys}")
+    # Verify prices
+    price_map = {p["id"]: p["price"] for p in data["plans"]}
+    assert price_map["basic"] == 69.90
+    assert price_map["pro"] == 149.90
+    assert price_map["premium"] == 249.90
+    print(f"Plans OK: {keys} with prices {price_map}")
+
+def test_billing_subscription(auth_session):
+    resp = auth_session.get(f"{BASE_URL}/api/billing/subscription")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "plan" in data
+    assert "status" in data
+    assert "plan_name" in data
+    print(f"Subscription OK: plan={data['plan']}, status={data['status']}")
+
+def test_billing_checkout_returns_url(auth_session):
+    """POST /api/billing/checkout must return checkout_url pointing to Asaas sandbox"""
+    resp = auth_session.post(f"{BASE_URL}/api/billing/checkout", json={})
+    assert resp.status_code == 200, f"Checkout failed: {resp.status_code} | {resp.text}"
+    data = resp.json()
+    assert "checkout_url" in data, f"Missing checkout_url in response: {data}"
+    assert data["checkout_url"].startswith("https://"), f"Invalid URL: {data['checkout_url']}"
+    assert "asaas" in data["checkout_url"], f"URL doesn't point to Asaas: {data['checkout_url']}"
+    assert "checkout_id" in data
+    assert "plan" in data
+    print(f"Checkout OK: url={data['checkout_url']}, plan={data['plan']}")
+
+def test_billing_plan_upgrade(auth_session):
+    """PUT /api/billing/plan - switch plan"""
+    resp = auth_session.put(f"{BASE_URL}/api/billing/plan", json={"plan": "pro"})
+    assert resp.status_code == 200
+    # Revert back to basic
+    auth_session.put(f"{BASE_URL}/api/billing/plan", json={"plan": "basic"})
+    print("Plan upgrade OK")
 
 # ---- Dashboard ----
 

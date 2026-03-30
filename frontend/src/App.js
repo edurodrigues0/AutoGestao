@@ -14,6 +14,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
 import PaymentResult from "./pages/PaymentResult";
+import MyServices from "./pages/MyServices";
 
 function LoadingScreen() {
   return (

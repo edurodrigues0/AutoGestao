@@ -150,72 +150,48 @@ PLANS = {
 def get_asaas_headers():
     return {"access_token": ASAAS_API_KEY, "Content-Type": "application/json", "User-Agent": "AutoGestao/1.0"}
 
-def get_checkout_url(checkout_id: str) -> str:
-    """Build Asaas native checkout URL from checkout ID."""
-    if "sandbox" in ASAAS_BASE_URL.lower():
-        return f"https://sandbox.asaas.com/checkoutSession/{checkout_id}"
-    return f"https://www.asaas.com/checkoutSession/{checkout_id}"
-
-def asaas_create_customer(name: str, email: str, cpf_cnpj: str, phone: str = None):
-    if not ASAAS_API_KEY:
-        return None
-    payload = {"name": name, "email": email, "cpfCnpj": cpf_cnpj.replace(".", "").replace("-", "").replace("/", "")}
-    if phone:
-        payload["mobilePhone"] = phone
-    try:
-        resp = requests.post(f"{ASAAS_BASE_URL}/v3/customers", headers=get_asaas_headers(), json=payload, timeout=30)
-        logger.info(f"Asaas create customer status: {resp.status_code}")
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        logger.error(f"Asaas create customer error: {e} | {getattr(e, 'response', None) and e.response.text}")
-        return None
-
-def asaas_create_checkout_session(customer_id: str, plan: str, success_url: str) -> dict | None:
-    """Create native Asaas checkout session for recurring subscription."""
-    if not ASAAS_API_KEY:
-        return None
-    plan_info = PLANS.get(plan, PLANS["basic"])
-    expires_at = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
-    payload = {
-        "billingType": "UNDEFINED",   # customer chooses on Asaas page (PIX/Boleto/Card)
-        "chargeType": "RECURRENT",    # creates subscription on payment
-        "customer": customer_id,
-        "value": plan_info["price"],
-        "expiresAt": expires_at,
-        "name": f"AutoGestão - Plano {plan_info['name']}",
-        "description": f"Assinatura mensal AutoGestão - {plan_info['description']}",
-        "callback": {
-            "successUrl": success_url,
-            "autoRedirect": True
-        }
-    }
-    try:
-        resp = requests.post(f"{ASAAS_BASE_URL}/v3/checkouts", headers=get_asaas_headers(), json=payload, timeout=30)
-        logger.info(f"Asaas checkout status: {resp.status_code} | body: {resp.text[:300]}")
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        logger.error(f"Asaas checkout error: {e} | {getattr(e, 'response', None) and e.response.text if hasattr(e, 'response') else ''}")
-        return None
-
-# legacy helper kept for register flow
-def asaas_create_subscription(customer_id: str, plan: str, billing_type: str):
+def asaas_create_checkout_session(plan: str, success_url: str, cancel_url: str, customer_id: str = None) -> dict | None:
+    """Create native Asaas checkout session for recurring subscription.
+    No customer data required — Asaas collects it on the checkout page.
+    Only CREDIT_CARD is supported for RECURRENT charge type.
+    """
     if not ASAAS_API_KEY:
         return None
     plan_info = PLANS.get(plan, PLANS["basic"])
     next_due = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
     payload = {
-        "customer": customer_id, "billingType": billing_type,
-        "value": plan_info["price"], "nextDueDate": next_due,
-        "cycle": "MONTHLY", "description": f"AutoGestão - Plano {plan_info['name']}"
+        "callback": {
+            "successUrl": success_url,
+            "cancelUrl": cancel_url,
+            "expiredUrl": cancel_url,
+            "autoRedirect": True
+        },
+        "items": [{
+            "name": f"AutoGestão - Plano {plan_info['name']}",
+            "description": f"Assinatura mensal - {plan_info['description']}",
+            "quantity": 1,
+            "value": plan_info["price"]
+        }],
+        "billingTypes": ["CREDIT_CARD"],
+        "chargeTypes": ["RECURRENT"],
+        "subscription": {
+            "cycle": "MONTHLY",
+            "nextDueDate": next_due
+        },
+        "minutesToExpire": 1440
     }
+    if customer_id:
+        payload["customer"] = customer_id
     try:
-        resp = requests.post(f"{ASAAS_BASE_URL}/v3/subscriptions", headers=get_asaas_headers(), json=payload, timeout=30)
+        resp = requests.post(f"{ASAAS_BASE_URL}/v3/checkouts", headers=get_asaas_headers(), json=payload, timeout=30)
+        logger.info(f"Asaas checkout status: {resp.status_code} | body: {resp.text[:500]}")
         resp.raise_for_status()
         return resp.json()
+    except requests.HTTPError as e:
+        logger.error(f"Asaas checkout HTTP error: {e.response.status_code} | response: {e.response.text}")
+        return None
     except Exception as e:
-        logger.error(f"Asaas subscription error: {e}")
+        logger.error(f"Asaas checkout error: {e}")
         return None
 
 # ============ PYDANTIC MODELS ============
@@ -261,7 +237,7 @@ class ServiceUpdate(BaseModel):
     value: Optional[float] = None
 
 class CheckoutCreate(BaseModel):
-    cpf_cnpj: str
+    cpf_cnpj: Optional[str] = None
     phone: Optional[str] = None
 
 class PlanUpgrade(BaseModel):
@@ -387,15 +363,7 @@ async def register_workspace(data: WorkspaceCreate, response: Response):
     user_id = str(u_id)
 
     checkout_url = None
-    if ASAAS_API_KEY and data.cpf_cnpj:
-        customer = asaas_create_customer(data.owner_name, data.email, data.cpf_cnpj, data.phone)
-        if customer:
-            cid = customer.get("id")
-            await db.workspaces.update_one({"_id": ws_id}, {"$set": {"asaas_customer_id": cid}})
-            sub = asaas_create_subscription(cid, data.plan, "PIX")
-            if sub:
-                await db.workspaces.update_one({"_id": ws_id}, {"$set": {"asaas_subscription_id": sub.get("id")}})
-                checkout_url = sub.get("invoiceUrl") or sub.get("bankSlipUrl")
+    # Note: Asaas checkout is initiated from the Billing page after registration
 
     access_token = create_access_token(user_id, data.email.lower(), "admin", workspace_id)
     refresh_token = create_refresh_token(user_id)
@@ -987,37 +955,29 @@ async def create_checkout(data: CheckoutCreate, current_user: dict = Depends(get
 
     plan = w.get("plan", "basic") if w else "basic"
 
-    # Create or reuse Asaas customer
-    customer_id = w.get("asaas_customer_id") if w else None
-    if not customer_id:
-        customer = asaas_create_customer(
-            current_user.get("name", ""),
-            current_user.get("email", ""),
-            data.cpf_cnpj,
-            data.phone
-        )
-        if not customer:
-            raise HTTPException(502, "Erro ao criar cliente no Asaas. Verifique CPF/CNPJ e tente novamente.")
-        customer_id = customer.get("id")
-        await db.workspaces.update_one(
-            {"_id": ObjectId(workspace_id)},
-            {"$set": {"asaas_customer_id": customer_id, "cpf_cnpj": data.cpf_cnpj}}
-        )
-
-    # Build success redirect URL
+    # Build redirect URLs
     success_url = f"{FRONTEND_URL}/billing/success"
+    cancel_url = f"{FRONTEND_URL}/billing/failed"
 
-    # Create native Asaas checkout session
-    checkout = asaas_create_checkout_session(customer_id, plan, success_url)
+    # Reuse existing customer if already created
+    customer_id = w.get("asaas_customer_id") if w else None
+
+    # Create native Asaas checkout session (Asaas collects customer data on their page)
+    checkout = asaas_create_checkout_session(
+        plan=plan,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        customer_id=customer_id
+    )
     if not checkout:
         raise HTTPException(502, "Erro ao gerar checkout no Asaas. Tente novamente em instantes.")
 
     checkout_id = checkout.get("id")
-    if not checkout_id:
-        logger.error(f"Asaas checkout response without ID: {checkout}")
-        raise HTTPException(502, "Resposta inválida do Asaas. Tente novamente.")
+    checkout_url = checkout.get("link")  # Asaas returns the full URL in 'link' field
 
-    checkout_url = get_checkout_url(checkout_id)
+    if not checkout_id or not checkout_url:
+        logger.error(f"Asaas checkout response invalid: {checkout}")
+        raise HTTPException(502, "Resposta inválida do Asaas. Tente novamente.")
 
     # Save checkout reference for webhook correlation
     await db.workspaces.update_one(

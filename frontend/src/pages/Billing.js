@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../components/Layout";
-import { CreditCard, CheckCircle, ExternalLink, AlertCircle, ArrowRight, Loader } from "lucide-react";
+import { CreditCard, CheckCircle, ExternalLink, AlertCircle, ArrowRight, Loader, Shield } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -18,8 +18,6 @@ const PLANS = [
 export default function Billing() {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [cpfCnpj, setCpfCnpj] = useState("");
-  const [phone, setPhone] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [error, setError] = useState("");
   const [upgradeLoading, setUpgradeLoading] = useState(null);
@@ -35,21 +33,15 @@ export default function Billing() {
 
   useEffect(() => { load(); }, []);
 
-  const handleCheckout = async (e) => {
-    e.preventDefault();
-    if (!cpfCnpj.trim()) {
-      setError("CPF/CNPJ é obrigatório para gerar o pagamento.");
-      return;
-    }
+  const handleCheckout = async () => {
     setError("");
     setCheckoutLoading(true);
     try {
       const { data } = await axios.post(
         `${API}/billing/checkout`,
-        { cpf_cnpj: cpfCnpj.trim(), phone: phone.trim() || null },
+        {},
         { withCredentials: true }
       );
-      // Redirect to Asaas native checkout
       window.location.href = data.checkout_url;
     } catch (err) {
       const detail = err.response?.data?.detail;
@@ -82,6 +74,8 @@ export default function Billing() {
       </AdminLayout>
     );
   }
+
+  const currentPlan = PLANS.find(p => p.id === subscription?.plan) || PLANS[0];
 
   return (
     <AdminLayout title="Assinatura">
@@ -157,11 +151,11 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Checkout / payment form */}
+        {/* Checkout */}
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Pagamento via Asaas</p>
           <p className="text-sm text-slate-500 mb-4">
-            Você será redirecionado para o checkout seguro do Asaas onde poderá pagar via PIX, Boleto ou Cartão.
+            Você será redirecionado para o checkout seguro do Asaas onde preencherá seus dados e pagará via cartão de crédito com renovação automática mensal.
           </p>
 
           {error && (
@@ -171,59 +165,39 @@ export default function Billing() {
             </div>
           )}
 
-          <form onSubmit={handleCheckout} className="space-y-3" data-testid="checkout-form">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                CPF / CNPJ *
-              </label>
-              <input
-                type="text"
-                value={cpfCnpj}
-                onChange={e => setCpfCnpj(e.target.value)}
-                placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                required
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-slate-900 text-sm"
-                data-testid="checkout-cpf-cnpj"
-              />
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Plano {currentPlan.name}</p>
+                <p className="text-xs text-slate-500">{currentPlan.description} · Renovação mensal automática</p>
+              </div>
+              <p className="text-lg font-bold text-blue-600">{formatCurrency(currentPlan.price)}</p>
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-                Telefone <span className="text-slate-300 normal-case font-normal tracking-normal">(opcional)</span>
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="(11) 99999-9999"
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none text-slate-900 text-sm"
-                data-testid="checkout-phone"
-              />
-            </div>
+          </div>
 
-            <button
-              type="submit"
-              disabled={checkoutLoading}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl transition-fast flex items-center justify-center gap-2 mt-1"
-              data-testid="go-to-checkout-btn"
-            >
-              {checkoutLoading ? (
-                <>
-                  <Loader size={18} className="animate-spin" />
-                  Gerando checkout...
-                </>
-              ) : (
-                <>
-                  <ExternalLink size={18} />
-                  Ir para o Checkout Asaas
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
+          <button
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl transition-fast flex items-center justify-center gap-2"
+            data-testid="go-to-checkout-btn"
+          >
+            {checkoutLoading ? (
+              <>
+                <Loader size={18} className="animate-spin" />
+                Gerando checkout...
+              </>
+            ) : (
+              <>
+                <ExternalLink size={18} />
+                Ir para o Checkout Asaas
+                <ArrowRight size={16} />
+              </>
+            )}
+          </button>
 
-          <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
-            <CheckCircle size={13} className="text-green-500" />
-            Checkout 100% seguro via Asaas · PIX, Boleto ou Cartão
+          <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+            <Shield size={13} className="text-green-500" />
+            Checkout 100% seguro via Asaas · Cartão de crédito com renovação automática mensal
           </div>
         </div>
 
