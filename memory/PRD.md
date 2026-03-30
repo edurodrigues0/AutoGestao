@@ -7,10 +7,10 @@ SaaS multi-tenant para gestão de serviços de auto mecânicas com controle indi
 2024-01 (implementado em 2026-03)
 
 ## Stack Tecnológica
-- **Frontend**: React + Tailwind CSS + Recharts + Lucide Icons + Phosphor Icons
+- **Frontend**: React + Tailwind CSS + Recharts + Lucide Icons
 - **Backend**: FastAPI + MongoDB (Motor async)
 - **Storage**: Emergent Object Storage (fotos dos serviços)
-- **Pagamentos**: Asaas (sandbox - aguardando API key)
+- **Pagamentos**: Asaas (sandbox ativo)
 - **Auth**: JWT com httpOnly cookies + bcrypt
 
 ## Arquitetura Multi-tenant
@@ -72,50 +72,46 @@ SaaS multi-tenant para gestão de serviços de auto mecânicas com controle indi
 - [x] Configurar tipo de comissão (fixo/individual)
 - [x] Configurar percentual padrão
 
-### Billing (Asaas)
+### Billing (Asaas) — COMPLETO
 - [x] Visualizar plano atual
 - [x] Trocar de plano (upgrade/downgrade local)
 - [x] Webhook Asaas para ativação automática
-- [x] Checkout Asaas (aguarda API key)
-- [ ] PENDENTE: ASAAS_API_KEY não configurada (sandbox walletId fornecido: 57dd2dd4-bc12-4777-8869-f5e70e83e84d)
+- [x] Checkout nativo Asaas (redirect para https://sandbox.asaas.com/checkoutSession/show/{id})
+- [x] Retorno do checkout: /billing/success (com polling de ativação) e /billing/failed
+- [x] Payload correto: billingTypes: ["CREDIT_CARD"], chargeTypes: ["RECURRENT"], subscription com cycle MONTHLY
+- [x] Asaas coleta dados do cliente diretamente no checkout (sem CPF/CNPJ obrigatório no nosso form)
 
 ## PWA (Progressive Web App)
 - [x] manifest.json com nome, ícones, display standalone, shortcuts
-- [x] Service Worker com cache estratégico (estáticos: cache-first, API: network-first, navegação: network-first)
-- [x] Ícones para Android: 192x192 e 512x512 (normal + maskable)
-- [x] Apple Touch Icon 180x180 para iOS
-- [x] Meta tags iOS: apple-mobile-web-app-capable, status-bar-style, title
-- [x] Theme color #2563EB (barra Android)
-- [x] viewport-fit=cover (notch iOS)
-- [x] Shortcuts no manifest (Registrar Serviço e Dashboard Admin)
-- [x] Banner de instalação Android (beforeinstallprompt)
-- [x] Banner de instruções iOS (como adicionar à tela inicial via Safari)
-- Admin: admin@autogestao.com / admin123
+- [x] Service Worker com cache estratégico
+- [x] Ícones para Android e iOS
+- [x] Banner de instalação Android e iOS
 
 ## Configurações de Ambiente (backend/.env)
 - MONGO_URL, DB_NAME=autogestao_db
 - JWT_SECRET (gerado)
 - EMERGENT_LLM_KEY (configurado)
-- ASAAS_API_KEY (VAZIO - precisa ser preenchido)
+- ASAAS_API_KEY (configurado — sandbox aprovado)
 - ASAAS_WALLET_ID=57dd2dd4-bc12-4777-8869-f5e70e83e84d
-- ASAAS_BASE_URL=https://api-sandbox.asaas.com
+- ASAAS_BASE_URL=https://sandbox.asaas.com/api
+- FRONTEND_URL=https://oficina-pro-4.preview.emergentagent.com
 
 ## Backlog Priorizado
-
-### P0 - Crítico
-- [ ] ASAAS_API_KEY: usuário precisa fornecer a chave API do sandbox Asaas para ativar o pagamento recorrente
 
 ### P1 - Alta Prioridade
 - [ ] Notificações por email (quando serviço registrado, quando comissão calculada)
 - [ ] Página de perfil do mecânico (trocar senha)
-- [ ] Histórico de pagamentos Asaas
+- [ ] Histórico de pagamentos Asaas (listar faturas do workspace)
 - [ ] Múltiplas oficinas por superadmin
 
 ### P2 - Média Prioridade
 - [ ] Gráfico de comissão no dashboard do mecânico
-- [ ] Exportar relatório por mecânico individual
+- [ ] Exportar relatório por mecânico individual (PDF com foto)
 - [ ] Busca por número de serviço
 - [ ] Tags/categorias de serviço
+
+### Refatoração
+- [ ] server.py com 1000+ linhas — separar em routes/, models/, services/
 
 ## Notas Técnicas
 - Storage: Emergent Object Storage via EMERGENT_LLM_KEY
@@ -123,3 +119,6 @@ SaaS multi-tenant para gestão de serviços de auto mecânicas com controle indi
 - Photo display: fetch blob com axios (respects httpOnly cookies)
 - Commission calc: workspace.commission_type determines if fixed or individual
 - Reports: reportlab para PDF, pandas+openpyxl para Excel
+- Asaas Checkout: CREDIT_CARD é o único método para RECURRENT subscriptions
+  PIX requer chave PIX cadastrada no Asaas; BOLETO tem restrições similares
+- Webhook: correlação via asaas_checkout_id salvo no workspace na criação do checkout
