@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../components/Layout";
-import { UserPlus, Edit2, Power, AlertCircle, CheckCircle, X, Percent } from "lucide-react";
+import { UserPlus, Edit2, Power, AlertCircle, CheckCircle, X, Percent, Lock, Copy } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -125,10 +125,97 @@ function MechanicModal({ mechanic, onSave, onClose }) {
   );
 }
 
+function ResetPasswordModal({ mechanic, onReset, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const handleReset = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.put(`${API}/mechanics/${mechanic.id}/reset-password`, {}, { withCredentials: true });
+      setNewPassword(data.new_password);
+    } catch (err) {
+      alert("Erro ao resetar senha");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(newPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 text-left">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl animate-fade-in overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Resetar Senha</h3>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg"><X size={18} className="text-slate-400" /></button>
+        </div>
+        
+        <div className="p-6">
+          {!newPassword ? (
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto">
+                <Lock size={24} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600">Tem certeza que deseja resetar a senha de <strong>{mechanic.name}</strong>?</p>
+                <p className="text-xs text-slate-400 mt-1">Uma nova senha aleatória será gerada.</p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={onClose} className="flex-1 h-10 rounded-xl border border-slate-200 text-sm font-medium">Cancelar</button>
+                <button 
+                  onClick={handleReset} 
+                  disabled={loading}
+                  className="flex-1 h-10 bg-orange-600 text-white rounded-xl text-sm font-bold hover:bg-orange-700 disabled:opacity-50"
+                  data-testid="confirm-reset-btn"
+                >
+                  {loading ? "Gerando..." : "Confirmar"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 text-center">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle size={24} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-600 mb-3">Nova senha gerada com sucesso:</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <code className="text-2xl font-bold text-slate-900 tracking-wider font-mono">{newPassword}</code>
+                  <button 
+                    onClick={handleCopy}
+                    className={`p-2.5 rounded-xl transition-all ${copied ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm"}`}
+                    data-testid="copy-password-btn"
+                  >
+                    {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
+                  </button>
+                </div>
+                {copied && <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider mt-2">Copiado!</p>}
+              </div>
+              <button 
+                onClick={onClose}
+                className="w-full h-11 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800"
+              >
+                Concluído
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MechanicsAdmin() {
   const [mechanics, setMechanics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
+  const [resetModal, setResetModal] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 
@@ -162,6 +249,7 @@ export default function MechanicsAdmin() {
 
   const activeMechanics = mechanics.filter(m => m.is_active !== false);
   const maxMechanics = subscription?.plan_max_mechanics;
+  const isLimitReached = maxMechanics && maxMechanics > 0 && activeMechanics.length >= maxMechanics;
 
   return (
     <AdminLayout title="Mecânicos">
@@ -176,7 +264,8 @@ export default function MechanicsAdmin() {
           </div>
           <button
             onClick={() => setModal({})}
-            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-fast"
+            disabled={isLimitReached}
+            className="flex items-center gap-2 bg-blue-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-fast"
             data-testid="add-mechanic-btn"
           >
             <UserPlus size={17} />
@@ -200,7 +289,12 @@ export default function MechanicsAdmin() {
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
             <UserPlus size={40} className="text-slate-200 mx-auto mb-3" />
             <p className="text-slate-400 mb-4">Nenhum mecânico cadastrado</p>
-            <button onClick={() => setModal({})} className="bg-blue-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-blue-700" data-testid="first-mechanic-btn">
+            <button
+               onClick={() => setModal({})}
+               disabled={isLimitReached}
+               className="bg-blue-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+               data-testid="first-mechanic-btn"
+            >
               Adicionar primeiro mecânico
             </button>
           </div>
@@ -220,6 +314,14 @@ export default function MechanicsAdmin() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button
+                      onClick={() => setResetModal(m)}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-fast"
+                      title="Resetar Senha"
+                      data-testid={`reset-password-${m.id}`}
+                    >
+                      <Lock size={15} />
+                    </button>
+                    <button
                       onClick={() => setModal(m)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-fast"
                       data-testid={`edit-mechanic-${m.id}`}
@@ -228,8 +330,9 @@ export default function MechanicsAdmin() {
                     </button>
                     <button
                       onClick={() => handleToggleActive(m)}
-                      disabled={togglingId === m.id}
-                      className={`p-1.5 rounded-lg transition-fast ${m.is_active !== false ? "hover:bg-red-50 text-slate-400 hover:text-red-500" : "hover:bg-green-50 text-slate-400 hover:text-green-600"}`}
+                      disabled={togglingId === m.id || (m.is_active === false && isLimitReached)}
+                      className={`p-1.5 rounded-lg transition-fast ${m.is_active !== false ? "hover:bg-red-50 text-slate-400 hover:text-red-500" : "hover:bg-green-50 text-slate-400 hover:text-green-600"} disabled:opacity-30 disabled:cursor-not-allowed`}
+                      title={m.is_active === false && isLimitReached ? "Limite do plano atingido" : ""}
                       data-testid={`toggle-mechanic-${m.id}`}
                     >
                       <Power size={15} />
@@ -264,6 +367,13 @@ export default function MechanicsAdmin() {
           mechanic={modal?.id ? modal : null}
           onSave={() => { setModal(null); load(); }}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {resetModal !== null && (
+        <ResetPasswordModal
+          mechanic={resetModal}
+          onClose={() => setResetModal(null)}
         />
       )}
     </AdminLayout>

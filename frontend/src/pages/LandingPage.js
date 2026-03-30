@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Wrench, Shield, BarChart3, Camera, CheckCircle, ArrowRight, Smartphone, Star } from "lucide-react";
 
-const HERO_IMG = "https://images.unsplash.com/photo-1767339736247-582fcf11442b?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
+const HERO_IMG = "https://images.unsplash.com/photo-1645445522156-9ac06bc7a767?q=70&w=1200";
 const FEATURES_IMG = "https://images.pexels.com/photos/5276374/pexels-photo-5276374.jpeg?auto=compress&cs=tinysrgb&w=600";
 
 const plans = [

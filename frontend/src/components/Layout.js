@@ -19,6 +19,7 @@ const mechanicNavItems = [
   { path: "/mechanic/dashboard", icon: LayoutDashboard, label: "Início" },
   { path: "/mechanic/add-service", icon: Plus, label: "Registrar" },
   { path: "/mechanic/services", icon: ClipboardList, label: "Meus Serviços" },
+  { path: "/mechanic/profile", icon: Settings, label: "Perfil" },
 ];
 
 export function AdminLayout({ children, title }) {

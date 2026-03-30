@@ -243,6 +243,10 @@ class CheckoutCreate(BaseModel):
 class PlanUpgrade(BaseModel):
     plan: str
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
 # ============ APP SETUP ============
 app = FastAPI(title="AutoGestão API")
 api_router = APIRouter(prefix="/api")
@@ -477,6 +481,21 @@ async def refresh_token_route(request: Request, response: Response):
     except jwt.InvalidTokenError:
         raise HTTPException(401, "Token inválido")
 
+@api_router.put("/auth/change-password")
+async def change_password(data: ChangePassword, current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(404, "Usuário não encontrado")
+    
+    if not verify_password(data.current_password, user.get("password_hash", "")):
+        raise HTTPException(400, "Senha atual incorreta")
+    
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {"$set": {"password_hash": hash_password(data.new_password)}}
+    )
+    return {"message": "Senha alterada com sucesso"}
+
 # ============ SERVICES ROUTES ============
 @api_router.post("/services/upload-photo")
 async def upload_photo(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
@@ -610,6 +629,15 @@ async def get_workspace_commission(workspace_id: str):
         pass
     return "fixed", 10.0
 
+async def check_mechanic_limit(workspace_id: str):
+    w = await db.workspaces.find_one({"_id": ObjectId(workspace_id)})
+    plan = w.get("plan", "basic") if w else "basic"
+    plan_info = PLANS.get(plan, PLANS["basic"])
+    max_mechanics = plan_info.get("max_mechanics", 2)
+    current_count = await db.users.count_documents({"workspace_id": workspace_id, "role": "mechanic", "is_active": True})
+    if max_mechanics > 0 and current_count >= max_mechanics:
+        raise HTTPException(403, f"Limite do plano {plan_info['name']} atingido ({max_mechanics} mecânicos). Faça upgrade.")
+
 @api_router.get("/mechanics")
 async def list_mechanics(current_user: dict = Depends(get_admin_user)):
     workspace_id = current_user.get("workspace_id")
@@ -641,15 +669,7 @@ async def list_mechanics(current_user: dict = Depends(get_admin_user)):
 @api_router.post("/mechanics")
 async def create_mechanic(data: MechanicCreate, current_user: dict = Depends(get_admin_user)):
     workspace_id = current_user.get("workspace_id")
-
-    w = await db.workspaces.find_one({"_id": ObjectId(workspace_id)})
-    plan = w.get("plan", "basic") if w else "basic"
-    plan_info = PLANS.get(plan, PLANS["basic"])
-    max_mechanics = plan_info.get("max_mechanics", 2)
-    current_count = await db.users.count_documents({"workspace_id": workspace_id, "role": "mechanic", "is_active": True})
-
-    if max_mechanics > 0 and current_count >= max_mechanics:
-        raise HTTPException(403, f"Limite do plano {plan_info['name']} atingido ({max_mechanics} mecânicos). Faça upgrade.")
+    await check_mechanic_limit(workspace_id)
 
     existing = await db.users.find_one({"email": data.email.lower()})
     if existing:
@@ -676,7 +696,13 @@ async def update_mechanic(mechanic_id: str, data: MechanicUpdate, current_user: 
     update_data = {}
     if data.name is not None: update_data["name"] = data.name
     if data.commission_percentage is not None: update_data["commission_percentage"] = data.commission_percentage
-    if data.is_active is not None: update_data["is_active"] = data.is_active
+    if data.is_active is not None:
+        if data.is_active:
+            # Check if mechanic is currently inactive
+            m = await db.users.find_one({"_id": ObjectId(mechanic_id), "workspace_id": workspace_id})
+            if m and not m.get("is_active", True):
+                await check_mechanic_limit(workspace_id)
+        update_data["is_active"] = data.is_active
     if not update_data:
         raise HTTPException(400, "Nenhum dado para atualizar")
     result = await db.users.update_one(
@@ -697,6 +723,25 @@ async def deactivate_mechanic(mechanic_id: str, current_user: dict = Depends(get
     if result.matched_count == 0:
         raise HTTPException(404, "Mecânico não encontrado")
     return {"message": "Mecânico desativado com sucesso"}
+
+@api_router.put("/mechanics/{mechanic_id}/reset-password")
+async def reset_mechanic_password(mechanic_id: str, current_user: dict = Depends(get_admin_user)):
+    workspace_id = current_user.get("workspace_id")
+    
+    import string
+    import random
+    chars = string.ascii_letters + string.digits
+    new_password = ''.join(random.choice(chars) for _ in range(6))
+    
+    result = await db.users.update_one(
+        {"_id": ObjectId(mechanic_id), "workspace_id": workspace_id, "role": "mechanic"},
+        {"$set": {"password_hash": hash_password(new_password)}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(404, "Mecânico não encontrado")
+        
+    return {"new_password": new_password}
 
 # ============ DASHBOARD ROUTES ============
 @api_router.get("/dashboard/mechanic")

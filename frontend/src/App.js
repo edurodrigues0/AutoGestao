@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
 import PaymentResult from "./pages/PaymentResult";
 import MyServices from "./pages/MyServices";
+import MechanicProfile from "./pages/MechanicProfile";
 
 function LoadingScreen() {
   return (
@@ -80,6 +81,7 @@ function App() {
             <Route path="/mechanic/dashboard" element={<ProtectedRoute allowedRoles={["mechanic"]}><MechanicDashboard /></ProtectedRoute>} />
             <Route path="/mechanic/add-service" element={<ProtectedRoute allowedRoles={["mechanic"]}><AddService /></ProtectedRoute>} />
             <Route path="/mechanic/services" element={<ProtectedRoute allowedRoles={["mechanic"]}><MyServices /></ProtectedRoute>} />
+            <Route path="/mechanic/profile" element={<ProtectedRoute allowedRoles={["mechanic"]}><MechanicProfile /></ProtectedRoute>} />
 
             {/* Payment Result - Public routes after Asaas redirect */}
             <Route path="/billing/success" element={<PaymentResult />} />

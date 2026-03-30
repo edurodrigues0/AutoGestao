@@ -17,7 +17,7 @@ function PhotoModal({ path, onClose }) {
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })
       .catch(() => onClose());
     return () => { if (url) URL.revokeObjectURL(url); };
-  }, [path]);
+  }, [path, onClose]);
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
