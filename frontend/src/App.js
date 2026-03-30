@@ -13,7 +13,7 @@ import MechanicsAdmin from "./pages/MechanicsAdmin";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Billing from "./pages/Billing";
-import MyServices from "./pages/MyServices";
+import PaymentResult from "./pages/PaymentResult";
 
 function LoadingScreen() {
   return (
@@ -79,6 +79,10 @@ function App() {
             <Route path="/mechanic/dashboard" element={<ProtectedRoute allowedRoles={["mechanic"]}><MechanicDashboard /></ProtectedRoute>} />
             <Route path="/mechanic/add-service" element={<ProtectedRoute allowedRoles={["mechanic"]}><AddService /></ProtectedRoute>} />
             <Route path="/mechanic/services" element={<ProtectedRoute allowedRoles={["mechanic"]}><MyServices /></ProtectedRoute>} />
+
+            {/* Payment Result - Public routes after Asaas redirect */}
+            <Route path="/billing/success" element={<PaymentResult />} />
+            <Route path="/billing/failed" element={<PaymentResult />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
