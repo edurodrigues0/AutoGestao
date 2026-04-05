@@ -15,7 +15,8 @@ function MechanicModal({ mechanic, onSave, onClose }) {
     name: mechanic?.name || "",
     email: mechanic?.email || "",
     password: "",
-    commission_percentage: mechanic?.commission_percentage != null ? String(mechanic.commission_percentage) : ""
+    commission_percentage: mechanic?.commission_percentage != null ? String(mechanic.commission_percentage) : "",
+    permissions: mechanic?.permissions || []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +34,8 @@ function MechanicModal({ mechanic, onSave, onClose }) {
     try {
       const payload = {
         name: form.name,
-        commission_percentage: form.commission_percentage ? parseFloat(form.commission_percentage) : null
+        commission_percentage: form.commission_percentage ? parseFloat(form.commission_percentage) : null,
+        permissions: form.permissions
       };
       if (isEdit) {
         await axios.put(`${API}/mechanics/${mechanic.id}`, payload, { withCredentials: true });
@@ -105,6 +107,34 @@ function MechanicModal({ mechanic, onSave, onClose }) {
                 data-testid="mechanic-commission-input"
               />
             </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2.5">Permissões</label>
+            <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              {[
+                { id: "view_all_services", label: "Visualizar todos os serviços" },
+                { id: "edit_services", label: "Editar serviços" },
+                { id: "delete_services", label: "Excluir serviços" }
+              ].map(perm => (
+                <label key={perm.id} className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={form.permissions.includes(perm.id)}
+                      onChange={(e) => {
+                        const newPerms = e.target.checked
+                          ? [...form.permissions, perm.id]
+                          : form.permissions.filter(p => p !== perm.id);
+                        setForm(f => ({ ...f, permissions: newPerms }));
+                      }}
+                      className="peer appearance-none w-5 h-5 border-2 border-slate-200 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer"
+                    />
+                    <CheckCircle size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-all pointer-events-none" />
+                  </div>
+                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-all font-medium">{perm.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-fast">
@@ -275,9 +305,12 @@ export default function MechanicsAdmin() {
 
         {/* Plan limit warning */}
         {maxMechanics && maxMechanics > 0 && activeMechanics.length >= maxMechanics && (
-          <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-xl p-3" data-testid="plan-limit-warning">
-            <AlertCircle size={16} className="flex-shrink-0" />
-            Limite do plano atingido ({maxMechanics} mecânicos). <a href="/admin/billing" className="font-semibold underline ml-1">Fazer upgrade</a>
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-xl p-4 shadow-sm" data-testid="plan-limit-warning">
+            <AlertCircle size={18} className="flex-shrink-0" />
+            <div>
+              <p className="font-bold">Limite do plano atingido ({maxMechanics} mecânicos ativos)</p>
+              <p className="text-xs opacity-80">Você deve inativar um mecânico existente ou <a href="/admin/billing" className="underline font-bold">fazer upgrade do seu plano</a> para adicionar ou reativar outros.</p>
+            </div>
           </div>
         )}
 

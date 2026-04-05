@@ -42,20 +42,16 @@ export default function MyServices() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [photoModal, setPhotoModal] = useState(null);
-  const [filters, setFilters] = useState({ start_date: "", end_date: "" });
-
+  const [editModal, setEditModal] = useState(null);
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (filters.start_date) params.start_date = filters.start_date;
-      if (filters.end_date) params.end_date = filters.end_date;
-      const { data } = await axios.get(`${API}/services`, { params, withCredentials: true });
+      const { data } = await axios.get(`${API}/services`, { withCredentials: true });
       setServices(data.services || []);
       setTotal(data.total || 0);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [filters]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -64,26 +60,6 @@ export default function MyServices() {
   return (
     <MechanicLayout title="Meus Serviços">
       <div className="p-4 space-y-4">
-        {/* Filters */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Filtrar por período</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-500 block mb-1">De</label>
-              <input type="date" value={filters.start_date} onChange={e => setFilters(f => ({ ...f, start_date: e.target.value }))} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-900 focus:border-blue-500 outline-none" data-testid="my-services-start-date" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 block mb-1">Até</label>
-              <input type="date" value={filters.end_date} onChange={e => setFilters(f => ({ ...f, end_date: e.target.value }))} className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-900 focus:border-blue-500 outline-none" data-testid="my-services-end-date" />
-            </div>
-          </div>
-          {(filters.start_date || filters.end_date) && (
-            <button onClick={() => setFilters({ start_date: "", end_date: "" })} className="mt-2 text-xs text-blue-600 font-semibold" data-testid="clear-my-services-filter">
-              Limpar filtro
-            </button>
-          )}
-        </div>
-
         {/* Summary */}
         {services.length > 0 && (
           <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3">
@@ -105,7 +81,7 @@ export default function MyServices() {
         ) : (
           <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-50" data-testid="my-services-list">
             {services.map(s => (
-              <div key={s.id} className="px-4 py-4 flex items-start gap-3">
+              <div key={s.id} className="px-4 py-4 flex items-start gap-3 relative">
                 {/* Photo thumb */}
                 {s.photo_path ? (
                   <button
@@ -120,18 +96,19 @@ export default function MyServices() {
                     <Camera size={20} className="text-blue-300" />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-8">
                   <p className="text-sm font-semibold text-slate-900">{s.client_name}</p>
                   {s.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{s.description}</p>}
                   <p className="text-xs text-slate-400 mt-1">{new Date(s.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}</p>
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-right flex-shrink-0 flex flex-col justify-between items-end h-full">
                   <p className="text-base font-bold text-slate-900">{formatCurrency(s.value)}</p>
-                  {s.photo_path && (
-                    <button onClick={() => setPhotoModal(s.photo_path)} className="text-xs text-blue-600 flex items-center gap-1 mt-1">
-                      <Image size={12} /> Ver foto
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => setEditModal(s)} 
+                    className="text-xs text-blue-600 flex items-center gap-1 mt-auto bg-blue-50 px-2 py-1 rounded-md"
+                  >
+                    Editar
+                  </button>
                 </div>
               </div>
             ))}
@@ -139,8 +116,118 @@ export default function MyServices() {
         )}
 
         {photoModal && <PhotoModal path={photoModal} onClose={() => setPhotoModal(null)} />}
+        {editModal && <EditServiceModal service={editModal} onClose={() => { setEditModal(null); load(); }} />}
       </div>
     </MechanicLayout>
+  );
+}
+
+function EditServiceModal({ service, onClose }) {
+  const [form, setForm] = useState({ client_name: service.client_name, description: service.description || "", value: service.value.toString() });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(service.photo_path || null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = import("react").then(m => m.useRef ? m.useRef(null) : null); // We will fix React import if needed, actually useRef is from "react"
+  
+  // Use state to workaround hook rules inside this component since React import is weird at file level
+  const [fileInputHTML, setFileInputHTML] = useState(null);
+  const [cameraInputHTML, setCameraInputHTML] = useState(null);
+
+  const formatBRL = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      let photoPath = service.photo_path;
+      if (photoFile) {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("file", photoFile);
+        const { data: uploadData } = await axios.post(`${API}/services/upload-photo`, formData, {
+          withCredentials: true,
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        photoPath = uploadData.path;
+        setUploading(false);
+      }
+
+      await axios.put(`${API}/services/${service.id}`, {
+        client_name: form.client_name,
+        description: form.description,
+        value: parseFloat(form.value) || service.value, // Keep old value if not editing
+        photo_path: photoPath
+      }, { withCredentials: true });
+
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Erro ao atualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl animate-scale-in">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Editar Serviço</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg"><X size={20} className="text-slate-500" /></button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
+          {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">{error}</div>}
+          
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Cliente</label>
+            <input 
+              value={form.client_name} 
+              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} 
+              className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-fast" 
+              required 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Descrição</label>
+            <textarea 
+              value={form.description} 
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+              rows={2}
+              className="w-full p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none transition-fast" 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Foto</label>
+            <div className="flex items-center gap-3">
+               <button type="button" onClick={() => cameraInputHTML?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><span className="text-[10px] font-bold">CÂMERA</span></button>
+               <button type="button" onClick={() => fileInputHTML?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><span className="text-[10px] font-bold">GALERIA</span></button>
+               <input ref={setCameraInputHTML} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
+               <input ref={setFileInputHTML} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+            </div>
+            {photoPreview && <p className="text-[10px] text-green-600 font-bold mt-2">✓ Foto selecionada</p>}
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={saving} 
+            className="w-full h-12 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-fast shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+          >
+            {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Salvar Alterações"}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ load_dotenv(Path(__file__).parent / '.env')
 
 import os
 import uuid
+import json
 import bcrypt
 import jwt
 import requests
@@ -18,6 +19,7 @@ from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, BeforeValidator
+from contextlib import asynccontextmanager
 
 # ============ CONFIG ============
 JWT_SECRET = os.environ.get('JWT_SECRET', 'fallback-secret-key')
@@ -159,6 +161,9 @@ def asaas_create_checkout_session(plan: str, success_url: str, cancel_url: str, 
         return None
     plan_info = PLANS.get(plan, PLANS["basic"])
     next_due = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    # Asaas v3 checkouts require absolute URLs for the callback object.
+    # Note: Asaas Sandbox may reject 'localhost' or '127.0.0.1' as invalid.
+    # If the user gets 400 errors for these fields, they should use a public URL via ngrok.
     payload = {
         "callback": {
             "successUrl": success_url,
@@ -180,6 +185,9 @@ def asaas_create_checkout_session(plan: str, success_url: str, cancel_url: str, 
         },
         "minutesToExpire": 1440
     }
+    logger.info(f"Asaas checkout payload: {json.dumps(payload, indent=2)}")
+    if "localhost" in success_url or "127.0.0.1" in success_url:
+        logger.warning(f"Using localhost in Asaas checkout callback - this often causes 400 errors in Sandbox.")
     if customer_id:
         payload["customer"] = customer_id
     try:
@@ -219,11 +227,13 @@ class MechanicCreate(BaseModel):
     email: str
     password: str
     commission_percentage: Optional[float] = None
+    permissions: Optional[List[str]] = []
 
 class MechanicUpdate(BaseModel):
     name: Optional[str] = None
     commission_percentage: Optional[float] = None
     is_active: Optional[bool] = None
+    permissions: Optional[List[str]] = None
 
 class ServiceCreate(BaseModel):
     client_name: str
@@ -235,6 +245,7 @@ class ServiceUpdate(BaseModel):
     client_name: Optional[str] = None
     description: Optional[str] = None
     value: Optional[float] = None
+    photo_path: Optional[str] = None
 
 class CheckoutCreate(BaseModel):
     cpf_cnpj: Optional[str] = None
@@ -248,20 +259,8 @@ class ChangePassword(BaseModel):
     new_password: str
 
 # ============ APP SETUP ============
-app = FastAPI(title="AutoGestão API")
-api_router = APIRouter(prefix="/api")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:3000", os.environ.get('CORS_ORIGINS', '*')],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ============ STARTUP ============
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     await db.users.create_index("email", unique=True)
     await db.workspaces.create_index("email")
     await db.services.create_index([("workspace_id", 1), ("mechanic_id", 1)])
@@ -325,6 +324,22 @@ async def startup_event():
         f.write("- GET /api/mechanics\n")
         f.write("- GET /api/billing/plans\n")
 
+    yield
+
+    # Shutdown
+    mongo_client.close()
+
+app = FastAPI(title="AutoGestão API", lifespan=lifespan)
+api_router = APIRouter(prefix="/api")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL, "http://localhost:3000", os.environ.get('CORS_ORIGINS', '*')],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ============ AUTH ROUTES ============
 @api_router.post("/auth/register-workspace")
 async def register_workspace(data: WorkspaceCreate, response: Response):
@@ -342,7 +357,7 @@ async def register_workspace(data: WorkspaceCreate, response: Response):
         "phone": data.phone,
         "cpf_cnpj": data.cpf_cnpj,
         "plan": data.plan,
-        "status": "active",
+        "status": "pending",
         "commission_type": "fixed",
         "commission_percentage": 10.0,
         "asaas_customer_id": None,
@@ -367,7 +382,13 @@ async def register_workspace(data: WorkspaceCreate, response: Response):
     user_id = str(u_id)
 
     checkout_url = None
-    # Note: Asaas checkout is initiated from the Billing page after registration
+    if ASAAS_API_KEY:
+        success_url = f"{FRONTEND_URL}/admin/dashboard"
+        cancel_url = f"{FRONTEND_URL}/admin/billing"
+        checkout = asaas_create_checkout_session(plan=data.plan, success_url=success_url, cancel_url=cancel_url)
+        if checkout:
+            checkout_url = checkout.get("link")
+            await db.workspaces.update_one({"_id": ws_id}, {"$set": {"asaas_checkout_id": checkout.get("id")}})
 
     access_token = create_access_token(user_id, data.email.lower(), "admin", workspace_id)
     refresh_token = create_refresh_token(user_id)
@@ -376,7 +397,7 @@ async def register_workspace(data: WorkspaceCreate, response: Response):
 
     return {
         "user": {"id": user_id, "email": data.email.lower(), "name": data.owner_name, "role": "admin", "workspace_id": workspace_id},
-        "workspace": {"id": workspace_id, "name": data.name, "plan": data.plan, "plan_name": plan_info["name"], "status": "active"},
+        "workspace": {"id": workspace_id, "name": data.name, "plan": data.plan, "plan_name": plan_info["name"], "status": "pending"},
         "checkout_url": checkout_url
     }
 
@@ -533,7 +554,9 @@ async def list_services(
     user_id = current_user.get("id")
 
     query = {"workspace_id": workspace_id}
-    if role == "mechanic":
+    permissions = current_user.get("permissions") or []
+
+    if role == "mechanic" and "view_all_services" not in permissions:
         query["mechanic_id"] = user_id
     elif mechanic_id:
         query["mechanic_id"] = mechanic_id
@@ -548,6 +571,17 @@ async def list_services(
         if end_date:
             date_query["$lte"] = end_date + "T23:59:59"
         query["created_at"] = date_query
+        
+    # Apply today-only restriction for certain mechanics
+    if role == "mechanic" and "view_all_services" not in permissions:
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        if "created_at" in query and isinstance(query["created_at"], dict):
+             # Ensure the start date is NEVER earlier than today
+             current_gte = query["created_at"].get("$gte", "")
+             if not current_gte or current_gte < today_start:
+                 query["created_at"]["$gte"] = today_start
+        else:
+             query["created_at"] = {"$gte": today_start}
 
     total = await db.services.count_documents(query)
     services_cursor = db.services.find(query).sort("created_at", -1).skip(skip).limit(limit)
@@ -589,6 +623,44 @@ async def create_service(data: ServiceCreate, current_user: dict = Depends(get_c
     await db.services.insert_one(service_doc)
     return doc_to_dict(service_doc)
 
+@api_router.put("/services/{service_id}")
+async def update_service(service_id: str, data: ServiceUpdate, current_user: dict = Depends(get_current_user)):
+    workspace_id = current_user.get("workspace_id")
+    user_id = current_user.get("id")
+    role = current_user.get("role")
+    
+    try:
+        q = {"_id": ObjectId(service_id), "workspace_id": workspace_id}
+    except Exception:
+        q = {"id": service_id, "workspace_id": workspace_id}
+        
+    service = await db.services.find_one(q)
+    if not service:
+        raise HTTPException(404, "Serviço não encontrado")
+        
+    # Check permissions...
+    if role == "mechanic" and "view_all_services" not in current_user.get("permissions", []):
+        # Must be owner
+        if str(service.get("mechanic_id")) != user_id:
+            raise HTTPException(403, "Sem permissão para editar serviço de outro mecânico")
+        # Must be from the current day
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        if service.get("created_at", "") < today_start:
+             raise HTTPException(403, "Somente serviços de hoje podem ser editados")
+
+    update_data = {}
+    if data.client_name is not None: update_data["client_name"] = data.client_name
+    if data.description is not None: update_data["description"] = data.description
+    if data.value is not None: update_data["value"] = data.value
+    if data.photo_path is not None: update_data["photo_path"] = data.photo_path
+    
+    if not update_data:
+        raise HTTPException(400, "Nenhum dado fornecido para atualização")
+        
+    await db.services.update_one(q, {"$set": update_data})
+    updated = await db.services.find_one(q)
+    return doc_to_dict(updated)
+
 @api_router.get("/services/{service_id}")
 async def get_service(service_id: str, current_user: dict = Depends(get_current_user)):
     workspace_id = current_user.get("workspace_id")
@@ -600,8 +672,10 @@ async def get_service(service_id: str, current_user: dict = Depends(get_current_
     except Exception:
         query = {"id": service_id, "workspace_id": workspace_id}
 
-    if role == "mechanic":
+    if role == "mechanic" and "view_all_services" not in current_user.get("permissions", []):
         query["mechanic_id"] = user_id
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        query["created_at"] = {"$gte": today_start}
 
     service = await db.services.find_one(query)
     if not service:
@@ -634,9 +708,9 @@ async def check_mechanic_limit(workspace_id: str):
     plan = w.get("plan", "basic") if w else "basic"
     plan_info = PLANS.get(plan, PLANS["basic"])
     max_mechanics = plan_info.get("max_mechanics", 2)
-    current_count = await db.users.count_documents({"workspace_id": workspace_id, "role": "mechanic", "is_active": True})
+    current_count = await db.users.count_documents({"workspace_id": workspace_id, "role": "mechanic", "is_active": {"$ne": False}})
     if max_mechanics > 0 and current_count >= max_mechanics:
-        raise HTTPException(403, f"Limite do plano {plan_info['name']} atingido ({max_mechanics} mecânicos). Faça upgrade.")
+        raise HTTPException(403, f"Limite do plano {plan_info['name']} atingido ({max_mechanics} mecânicos ativos). Inative um mecânico para ativar este.")
 
 @api_router.get("/mechanics")
 async def list_mechanics(current_user: dict = Depends(get_admin_user)):
@@ -684,6 +758,7 @@ async def create_mechanic(data: MechanicCreate, current_user: dict = Depends(get
         "role": "mechanic",
         "workspace_id": workspace_id,
         "commission_percentage": data.commission_percentage,
+        "permissions": data.permissions or [],
         "is_active": True,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
@@ -696,6 +771,7 @@ async def update_mechanic(mechanic_id: str, data: MechanicUpdate, current_user: 
     update_data = {}
     if data.name is not None: update_data["name"] = data.name
     if data.commission_percentage is not None: update_data["commission_percentage"] = data.commission_percentage
+    if data.permissions is not None: update_data["permissions"] = data.permissions
     if data.is_active is not None:
         if data.is_active:
             # Check if mechanic is currently inactive
@@ -772,7 +848,7 @@ async def mechanic_dashboard(current_user: dict = Depends(get_current_user)):
     }
 
 @api_router.get("/dashboard/admin")
-async def admin_dashboard(current_user: dict = Depends(get_admin_user)):
+async def admin_dashboard(current_user: dict = Depends(get_current_user)):
     workspace_id = current_user.get("workspace_id")
     now = datetime.now(timezone.utc)
     month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc).isoformat()
@@ -786,25 +862,30 @@ async def admin_dashboard(current_user: dict = Depends(get_admin_user)):
 
     commission_type, default_commission = await get_workspace_commission(workspace_id)
 
-    mechanics = []
-    async for m in db.users.find({"workspace_id": workspace_id, "role": "mechanic"}):
-        mechanics.append(doc_to_dict(m, exclude=["password_hash"]))
+    all_users = []
+    async for u in db.users.find({"workspace_id": workspace_id}):
+        all_users.append(doc_to_dict(u, exclude=["password_hash"]))
 
+    mechanics = [u for u in all_users if u.get("role") == "mechanic"]
+    
     mechanic_stats = []
-    for m in mechanics:
-        mid = m.get("id")
-        m_services = [s for s in all_month_services if s.get("mechanic_id") == mid]
-        m_total = sum(s.get("value", 0) for s in m_services)
-        commission_pct = (m.get("commission_percentage") if commission_type == "individual" and m.get("commission_percentage") is not None else default_commission)
+    for u in all_users:
+        uid = u.get("id")
+        u_services = [s for s in all_month_services if s.get("mechanic_id") == uid]
+        if not u_services and u.get("role") != "mechanic":
+            continue # Non-mechanics with no services don't clutter the ranking
+
+        u_total = sum(s.get("value", 0) for s in u_services)
+        commission_pct = (u.get("commission_percentage") if commission_type == "individual" and u.get("commission_percentage") is not None else default_commission)
         mechanic_stats.append({
-            "id": mid, "name": m.get("name"), "email": m.get("email"),
-            "total_month": m_total, "commission": m_total * commission_pct / 100,
-            "commission_percentage": commission_pct, "services_count": len(m_services),
-            "is_active": m.get("is_active", True)
+            "id": uid, "name": u.get("name"), "email": u.get("email"), "role": u.get("role"),
+            "total_month": u_total, "commission": u_total * commission_pct / 100,
+            "commission_percentage": commission_pct, "services_count": len(u_services),
+            "is_active": u.get("is_active", True)
         })
     mechanic_stats.sort(key=lambda x: x["total_month"], reverse=True)
 
-    mechanic_names = {m["id"]: m["name"] for m in mechanic_stats if m.get("id")}
+    mechanic_names = {u["id"]: u["name"] for u in all_users if u.get("id")}
     recent_services = []
     async for s in db.services.find({"workspace_id": workspace_id}).sort("created_at", -1).limit(10):
         sd = doc_to_dict(s)
@@ -1095,6 +1176,7 @@ async def asaas_webhook(request: Request):
 # ============ INCLUDE ROUTER ============
 app.include_router(api_router)
 
-@app.on_event("shutdown")
-async def shutdown():
-    mongo_client.close()
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("server:app", reload=True)

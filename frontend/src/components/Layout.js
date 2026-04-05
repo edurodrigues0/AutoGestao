@@ -51,18 +51,35 @@ export function AdminLayout({ children, title }) {
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1">
         {adminNavItems.map(({ path, icon: Icon, label }) => {
+          // Mechanics only see Dashboard and Services in this layout
+          const isMechanic = user?.role === "mechanic";
+          const allowedForMechanic = ["Dashboard", "Serviços"].includes(label);
+          if (isMechanic && !allowedForMechanic) return null;
+
           const active = location.pathname === path;
+          const isRestricted = ["Serviços", "Mecânicos", "Relatórios", "Configurações"].includes(label);
+          const isBlocked = isRestricted && user?.workspace?.status !== "active";
+
           return (
             <Link
               key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
+              to={isBlocked ? "#" : path}
+              onClick={(e) => {
+                if (isBlocked) {
+                  e.preventDefault();
+                  return;
+                }
+                setSidebarOpen(false);
+              }}
               data-testid={`nav-${label.toLowerCase().replace(/\s/g, '-')}`}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-fast ${
                 active
                   ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  : isBlocked
+                    ? "text-slate-300 cursor-not-allowed opacity-50"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
+              title={isBlocked ? "Finalize o pagamento para acessar" : ""}
             >
               <Icon size={18} />
               {label}
@@ -70,6 +87,16 @@ export function AdminLayout({ children, title }) {
             </Link>
           );
         })}
+        {user?.role === "mechanic" && (
+           <Link
+              to="/mechanic/add-service"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-fast"
+           >
+             <Plus size={18} />
+             Registrar Serviço
+           </Link>
+        )}
       </nav>
 
       {/* User */}
@@ -80,7 +107,7 @@ export function AdminLayout({ children, title }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900 truncate">{user?.name}</p>
-            <p className="text-xs text-slate-500">Admin</p>
+            <p className="text-xs text-slate-500 capitalize">{user?.role === 'admin' ? 'Administrador' : 'Mecânico'}</p>
           </div>
           <LogOut size={16} className="text-slate-400" />
         </div>
@@ -187,24 +214,36 @@ export function MechanicLayout({ children, title, showAddButton = true }) {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-slate-200 z-30">
         <div className="flex items-center justify-around py-2">
-          {mechanicNavItems.map(({ path, icon: Icon, label }) => {
+          {mechanicNavItems.filter((item) => {
+            if (item.label === "Início" && (!user?.permissions || !user.permissions.includes("view_all_services"))) return false;
+            return true;
+          }).map(({ path, icon: Icon, label }) => {
             const active = location.pathname === path;
             const isAdd = path.includes("add-service");
+            const isRestricted = ["Registrar", "Meus Serviços"].includes(label);
+            const isBlocked = isRestricted && user?.workspace?.status !== "active";
+
             return (
               <Link
                 key={path}
-                to={path}
+                to={isBlocked ? "#" : path}
+                onClick={(e) => {
+                  if (isBlocked) {
+                    e.preventDefault();
+                  }
+                }}
                 data-testid={`bottom-nav-${label.toLowerCase().replace(/\s/g, '-')}`}
-                className="flex flex-col items-center gap-1 px-4 py-1"
+                className={`flex flex-col items-center gap-1 px-4 py-1 transition-opacity ${isBlocked ? "opacity-30 cursor-not-allowed" : ""}`}
+                title={isBlocked ? "Pagamento da oficina pendente" : ""}
               >
                 {isAdd ? (
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${active ? "bg-blue-700" : "bg-blue-600"} shadow-lg`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${active ? "bg-blue-700" : (isBlocked ? "bg-slate-400" : "bg-blue-600")} shadow-lg`}>
                     <Icon size={22} className="text-white" />
                   </div>
                 ) : (
-                  <Icon size={22} className={active ? "text-blue-600" : "text-slate-400"} />
+                  <Icon size={22} className={active ? "text-blue-600" : (isBlocked ? "text-slate-300" : "text-slate-400")} />
                 )}
-                <span className={`text-xs font-medium ${active ? "text-blue-600" : "text-slate-400"}`}>{label}</span>
+                <span className={`text-xs font-medium ${active ? "text-blue-600" : (isBlocked ? "text-slate-300" : "text-slate-400")}`}>{label}</span>
               </Link>
             );
           })}

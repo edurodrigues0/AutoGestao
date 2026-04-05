@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { MechanicLayout } from "../components/Layout";
-import { DollarSign, TrendingUp, ClipboardList, Camera, ChevronRight } from "lucide-react";
+import { DollarSign, TrendingUp, ClipboardList, Camera, ChevronRight, CreditCard, AlertCircle } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -11,6 +12,7 @@ function formatCurrency(value) {
 }
 
 export default function MechanicDashboard() {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +48,20 @@ export default function MechanicDashboard() {
   return (
     <MechanicLayout title="">
       <div className="p-4 space-y-4 animate-fade-in">
+        {user?.workspace?.status !== "active" && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <AlertCircle size={20} className="text-orange-600" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-900 text-sm" style={{ fontFamily: 'Outfit' }}>Oficina com Pagamento Pendente</p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                O acesso às funcionalidades de registro e listagem de serviços está temporariamente bloqueado. 
+                Contate o administrador da oficina.
+              </p>
+            </div>
+          </div>
+        )}
         {/* Main earning card */}
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white" data-testid="earnings-card">
           <p className="text-sm text-blue-200 mb-1 capitalize">{monthName}</p>

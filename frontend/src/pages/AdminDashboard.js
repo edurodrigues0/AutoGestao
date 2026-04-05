@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../components/Layout";
-import { TrendingUp, Users, ClipboardList, DollarSign, Plus, ArrowUpRight } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { TrendingUp, Users, ClipboardList, DollarSign, Plus, ArrowUpRight, CreditCard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import axios from "axios";
 
@@ -39,6 +40,7 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +74,36 @@ export default function AdminDashboard() {
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-6 animate-fade-in">
+        {user?.workspace?.status !== "active" && (
+          <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+            <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <CreditCard size={28} className="text-orange-600" />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Pagamento Pendente</h2>
+              <p className="text-slate-600 text-sm">
+                Sua conta está com funcionalidades restritas. Complete o pagamento no Asaas para liberar o acesso total.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              >
+                <TrendingUp size={16} />
+                Já paguei
+              </button>
+              <Link 
+                to="/admin/billing" 
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+              >
+                Ver Fatura
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="admin-kpis">
           <KPICard
@@ -193,18 +225,28 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link to="/admin/mechanics" className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover" data-testid="add-mechanic-quick">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Plus size={18} className="text-blue-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link to={user?.role === "admin" ? "/admin/add-service" : "/mechanic/add-service"} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover group" data-testid="add-service-quick">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-fast shadow-lg shadow-blue-100">
+              <Plus size={18} className="text-white" />
             </div>
-            <span className="text-sm font-medium text-slate-900">Adicionar Mecânico</span>
+            <span className="text-sm font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Registrar Serviço</span>
           </Link>
-          <Link to="/admin/reports" className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover" data-testid="export-report-quick">
-            <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-              <TrendingUp size={18} className="text-green-600" />
+
+          {user?.role === "admin" && (
+            <Link to="/admin/mechanics" className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover" data-testid="add-mechanic-quick">
+              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+                <Users size={18} />
+              </div>
+              <span className="text-sm font-medium text-slate-900">Gerenciar Mecânicos</span>
+            </Link>
+          )}
+
+          <Link to={user?.role === "admin" ? "/admin/reports" : "/mechanic/services"} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover" data-testid="export-report-quick">
+            <div className={`w-10 h-10 ${user?.role === "admin" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"} rounded-xl flex items-center justify-center`}>
+              <TrendingUp size={18} />
             </div>
-            <span className="text-sm font-medium text-slate-900">Exportar Relatório</span>
+            <span className="text-sm font-medium text-slate-900">{user?.role === "admin" ? "Exportar Relatório" : "Ver Meus Serviços"}</span>
           </Link>
         </div>
       </div>
