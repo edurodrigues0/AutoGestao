@@ -8,6 +8,7 @@ import {
 
 const adminNavItems = [
   { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/admin/add-service", icon: Plus, label: "Registrar Serviço" },
   { path: "/admin/services", icon: ClipboardList, label: "Serviços" },
   { path: "/admin/mechanics", icon: Users, label: "Mecânicos" },
   { path: "/admin/reports", icon: FileText, label: "Relatórios" },

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "../components/Layout";
-import { UserPlus, Edit2, Power, AlertCircle, CheckCircle, X, Percent, Lock, Copy } from "lucide-react";
+import { UserPlus, Edit2, Power, AlertCircle, CheckCircle, X, Percent, Lock, Copy, PowerOff } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -107,34 +107,34 @@ function MechanicModal({ mechanic, onSave, onClose }) {
                 data-testid="mechanic-commission-input"
               />
             </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2.5">Permissões</label>
-            <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              {[
-                { id: "view_all_services", label: "Visualizar todos os serviços" },
-                { id: "edit_services", label: "Editar serviços" },
-                { id: "delete_services", label: "Excluir serviços" }
-              ].map(perm => (
-                <label key={perm.id} className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={form.permissions.includes(perm.id)}
-                      onChange={(e) => {
-                        const newPerms = e.target.checked
-                          ? [...form.permissions, perm.id]
-                          : form.permissions.filter(p => p !== perm.id);
-                        setForm(f => ({ ...f, permissions: newPerms }));
-                      }}
-                      className="peer appearance-none w-5 h-5 border-2 border-slate-200 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer"
-                    />
-                    <CheckCircle size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-all pointer-events-none" />
-                  </div>
-                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-all font-medium">{perm.label}</span>
-                </label>
-              ))}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2.5">Permissões</label>
+              <div className="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                {[
+                  { id: "view_all_services", label: "Visualizar todos os serviços" },
+                  { id: "edit_services", label: "Editar serviços" },
+                  { id: "delete_services", label: "Excluir serviços" }
+                ].map(perm => (
+                  <label key={perm.id} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={form.permissions.includes(perm.id)}
+                        onChange={(e) => {
+                          const newPerms = e.target.checked
+                            ? [...form.permissions, perm.id]
+                            : form.permissions.filter(p => p !== perm.id);
+                          setForm(f => ({ ...f, permissions: newPerms }));
+                        }}
+                        className="peer appearance-none w-5 h-5 border-2 border-slate-200 rounded-lg checked:border-blue-600 checked:bg-blue-600 transition-all cursor-pointer"
+                      />
+                      <CheckCircle size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-all pointer-events-none" />
+                    </div>
+                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-all font-medium">{perm.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-fast">
@@ -185,7 +185,7 @@ function ResetPasswordModal({ mechanic, onReset, onClose }) {
           <h3 className="font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Resetar Senha</h3>
           <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg"><X size={18} className="text-slate-400" /></button>
         </div>
-        
+
         <div className="p-6">
           {!newPassword ? (
             <div className="text-center space-y-4">
@@ -198,8 +198,8 @@ function ResetPasswordModal({ mechanic, onReset, onClose }) {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={onClose} className="flex-1 h-10 rounded-xl border border-slate-200 text-sm font-medium">Cancelar</button>
-                <button 
-                  onClick={handleReset} 
+                <button
+                  onClick={handleReset}
                   disabled={loading}
                   className="flex-1 h-10 bg-orange-600 text-white rounded-xl text-sm font-bold hover:bg-orange-700 disabled:opacity-50"
                   data-testid="confirm-reset-btn"
@@ -217,7 +217,7 @@ function ResetPasswordModal({ mechanic, onReset, onClose }) {
                 <p className="text-sm text-slate-600 mb-3">Nova senha gerada com sucesso:</p>
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4">
                   <code className="text-2xl font-bold text-slate-900 tracking-wider font-mono">{newPassword}</code>
-                  <button 
+                  <button
                     onClick={handleCopy}
                     className={`p-2.5 rounded-xl transition-all ${copied ? "bg-green-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm"}`}
                     data-testid="copy-password-btn"
@@ -227,7 +227,7 @@ function ResetPasswordModal({ mechanic, onReset, onClose }) {
                 </div>
                 {copied && <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider mt-2">Copiado!</p>}
               </div>
-              <button 
+              <button
                 onClick={onClose}
                 className="w-full h-11 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800"
               >
@@ -316,25 +316,25 @@ export default function MechanicsAdmin() {
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[1,2].map(i => <div key={i} className="h-32 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
+            {[1, 2].map(i => <div key={i} className="h-32 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
           </div>
         ) : mechanics.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
             <UserPlus size={40} className="text-slate-200 mx-auto mb-3" />
             <p className="text-slate-400 mb-4">Nenhum mecânico cadastrado</p>
             <button
-               onClick={() => setModal({})}
-               disabled={isLimitReached}
-               className="bg-blue-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-               data-testid="first-mechanic-btn"
+              onClick={() => setModal({})}
+              disabled={isLimitReached}
+              className="bg-blue-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="first-mechanic-btn"
             >
               Adicionar primeiro mecânico
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="mechanics-grid">
-            {mechanics.map(m => (
-              <div key={m.id} className={`bg-white border rounded-xl p-5 card-hover ${m.is_active !== false ? "border-slate-200" : "border-slate-100 opacity-60"}`} data-testid={`mechanic-card-${m.id}`}>
+            {mechanics.sort((a, b) => b.is_active - a.is_active).map(m => (
+              <div key={m.id} className={`bg-white border rounded-xl p-5 card-hover ${m.is_active !== false ? "border-slate-200" : "border-red-500 opacity-60"}`} data-testid={`mechanic-card-${m.id}`}>
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -351,6 +351,7 @@ export default function MechanicsAdmin() {
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-fast"
                       title="Resetar Senha"
                       data-testid={`reset-password-${m.id}`}
+                      disabled={m.is_active === false}
                     >
                       <Lock size={15} />
                     </button>
@@ -358,6 +359,7 @@ export default function MechanicsAdmin() {
                       onClick={() => setModal(m)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-fast"
                       data-testid={`edit-mechanic-${m.id}`}
+                      disabled={m.is_active === false}
                     >
                       <Edit2 size={15} />
                     </button>
@@ -368,7 +370,7 @@ export default function MechanicsAdmin() {
                       title={m.is_active === false && isLimitReached ? "Limite do plano atingido" : ""}
                       data-testid={`toggle-mechanic-${m.id}`}
                     >
-                      <Power size={15} />
+                      {m.is_active !== false ? <PowerOff size={15} /> : <Power size={15} />}
                     </button>
                   </div>
                 </div>

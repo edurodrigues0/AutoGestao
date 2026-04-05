@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AdminLayout } from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
-import { Search, Filter, Trash2, Image, ChevronDown, X } from "lucide-react";
+import { Search, Filter, Trash2, Image, ChevronDown, X, Edit2 } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -70,7 +70,7 @@ export default function ServicesAdmin() {
   useEffect(() => {
     axios.get(`${API}/mechanics`, { withCredentials: true })
       .then(({ data }) => setMechanics(data.mechanics || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleDelete = async (id) => {
@@ -202,7 +202,7 @@ export default function ServicesAdmin() {
                               data-testid={`edit-service-${s.id}`}
                               title="Editar"
                             >
-                              <Search size={15} /> {/* Reusing search icon as pencil if needed or import Edit */}
+                              <Edit2 size={15} /> {/* Reusing search icon as pencil if needed or import Edit */}
                             </button>
                             {user?.role === "admin" && (
                               <button
@@ -239,7 +239,7 @@ export default function ServicesAdmin() {
                           </button>
                         )}
                         <button onClick={() => setEditModal(s)} className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
-                          <Search size={16} /> 
+                          <Edit2 size={16} />
                         </button>
                         <span className="text-sm font-bold text-slate-900">{formatCurrency(s.value)}</span>
                         {user?.role === "admin" && (
@@ -270,8 +270,8 @@ function EditServiceModal({ service, onClose }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = React.useRef(null);
-  const cameraInputRef = React.useRef(null);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const formatBRL = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
@@ -327,56 +327,56 @@ function EditServiceModal({ service, onClose }) {
           <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Editar Serviço</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg"><X size={20} className="text-slate-500" /></button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">{error}</div>}
-          
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Cliente</label>
-            <input 
-              value={form.client_name} 
-              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} 
-              className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-fast" 
-              required 
+            <input
+              value={form.client_name}
+              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
+              className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-fast"
+              required
             />
           </div>
 
           {user?.role === "admin" && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Valor</label>
-              <input 
+              <input
                 value={new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(parseFloat(form.value))}
                 onChange={handleValueInput}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-lg" 
-                required 
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none font-bold text-lg"
+                required
               />
             </div>
           )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Descrição</label>
-            <textarea 
-              value={form.description} 
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+            <textarea
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none transition-fast" 
+              className="w-full p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none transition-fast"
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Foto</label>
             <div className="flex items-center gap-3">
-               <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><Plus size={20}/> <span className="text-[10px] font-bold">CÂMERA</span></button>
-               <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><Plus size={20}/> <span className="text-[10px] font-bold">GALERIA</span></button>
-               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
-               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+              <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><Plus size={20} /> <span className="text-[10px] font-bold">CÂMERA</span></button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><Plus size={20} /> <span className="text-[10px] font-bold">GALERIA</span></button>
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
             </div>
             {photoPreview && <p className="text-[10px] text-green-600 font-bold mt-2">✓ Foto selecionada</p>}
           </div>
 
-          <button 
-            type="submit" 
-            disabled={saving} 
+          <button
+            type="submit"
+            disabled={saving}
             className="w-full h-12 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-fast shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
           >
             {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Salvar Alterações"}

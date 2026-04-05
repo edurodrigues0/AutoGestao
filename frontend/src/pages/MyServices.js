@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MechanicLayout } from "../components/Layout";
 import { Camera, Image, X } from "lucide-react";
 import axios from "axios";
@@ -129,11 +129,8 @@ function EditServiceModal({ service, onClose }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = import("react").then(m => m.useRef ? m.useRef(null) : null); // We will fix React import if needed, actually useRef is from "react"
-  
-  // Use state to workaround hook rules inside this component since React import is weird at file level
-  const [fileInputHTML, setFileInputHTML] = useState(null);
-  const [cameraInputHTML, setCameraInputHTML] = useState(null);
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const formatBRL = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
@@ -210,10 +207,10 @@ function EditServiceModal({ service, onClose }) {
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Foto</label>
             <div className="flex items-center gap-3">
-               <button type="button" onClick={() => cameraInputHTML?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><span className="text-[10px] font-bold">CÂMERA</span></button>
-               <button type="button" onClick={() => fileInputHTML?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><span className="text-[10px] font-bold">GALERIA</span></button>
-               <input ref={setCameraInputHTML} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
-               <input ref={setFileInputHTML} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+               <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><span className="text-[10px] font-bold">CÂMERA</span></button>
+               <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><span className="text-[10px] font-bold">GALERIA</span></button>
+               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
+               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
             </div>
             {photoPreview && <p className="text-[10px] text-green-600 font-bold mt-2">✓ Foto selecionada</p>}
           </div>

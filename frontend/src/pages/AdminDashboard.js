@@ -63,7 +63,7 @@ export default function AdminDashboard() {
     return (
       <AdminLayout title="Dashboard">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[1,2,3,4].map(i => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 h-28 animate-pulse-bg"></div>
           ))}
         </div>
@@ -86,15 +86,15 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
               >
                 <TrendingUp size={16} />
                 Já paguei
               </button>
-              <Link 
-                to="/admin/billing" 
+              <Link
+                to="/admin/billing"
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
               >
                 Ver Fatura
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
             subtitle="Todos os tempos"
           />
           <KPICard
-            title="Mecânicos Ativos"
+            title="Mecânicos Cadastrados"
             value={data?.mechanics_count || 0}
             icon={Users}
             color="bg-green-600"
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={data.monthly_chart} barSize={32}>
                   <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="total" fill="#2563EB" radius={[4, 4, 0, 0]} />
                 </BarChart>
