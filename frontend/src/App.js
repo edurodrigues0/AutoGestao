@@ -39,6 +39,9 @@ function ProtectedRoute({ children, allowedRoles, requireViewAll, requireActiveW
     return <Navigate to="/mechanic/add-service" replace />;
   }
   if (requireActiveWorkspace && user.workspace?.status !== "active") {
+    if (user.workspace?.status === "inactive" || user.workspace?.status === "overdue") {
+      return <Navigate to="/admin/billing?expired=1" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
   return children;

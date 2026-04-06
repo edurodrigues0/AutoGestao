@@ -10,9 +10,13 @@ import jwt
 import requests
 import logging
 import io
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
+from PIL import Image
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Annotated
+from typing import Optional, List, Annotated, Tuple
 from bson import ObjectId
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
@@ -24,7 +28,6 @@ from contextlib import asynccontextmanager
 # ============ CONFIG ============
 JWT_SECRET = os.environ.get('JWT_SECRET', 'fallback-secret-key')
 JWT_ALGORITHM = "HS256"
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 ASAAS_API_KEY = os.environ.get('ASAAS_API_KEY', '')
 ASAAS_BASE_URL = os.environ.get('ASAAS_BASE_URL', 'https://api-sandbox.asaas.com')
 ASAAS_WALLET_ID = os.environ.get('ASAAS_WALLET_ID', '')
@@ -32,8 +35,20 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8001')
 APP_NAME = 'autogestao'
 
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-storage_key_cache = None
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "localhost:9000")
+MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
+MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "autogestao")
+MINIO_USE_SSL = os.environ.get("MINIO_USE_SSL", "false").lower() in ("1", "true", "yes")
+
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=f"{'https' if MINIO_USE_SSL else 'http'}://{MINIO_ENDPOINT}",
+    aws_access_key_id=MINIO_ACCESS_KEY,
+    aws_secret_access_key=MINIO_SECRET_KEY,
+    config=Config(signature_version="s3v4"),
+    region_name="us-east-1",
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -45,44 +60,79 @@ db = mongo_client[os.environ['DB_NAME']]
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
-# ============ STORAGE ============
-def init_storage():
-    global storage_key_cache
-    if storage_key_cache:
-        return storage_key_cache
-    if not EMERGENT_LLM_KEY:
-        return None
+# ============ STORAGE (MinIO / S3-compatible) ============
+def ensure_minio_bucket():
     try:
-        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        resp.raise_for_status()
-        storage_key_cache = resp.json()["storage_key"]
-        return storage_key_cache
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
-        return None
+        s3_client.head_bucket(Bucket=MINIO_BUCKET)
+    except ClientError:
+        try:
+            s3_client.create_bucket(Bucket=MINIO_BUCKET)
+        except ClientError as e:
+            err = e.response.get("Error", {}).get("Code", "")
+            if err not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
+                raise
+    logger.info("MinIO bucket OK: %s", MINIO_BUCKET)
 
-def put_object(path: str, data: bytes, content_type: str):
-    key = init_storage()
-    if not key:
-        raise HTTPException(500, "Armazenamento não inicializado")
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120
-    )
-    resp.raise_for_status()
-    return resp.json()
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    try:
+        s3_client.put_object(
+            Bucket=MINIO_BUCKET,
+            Key=path,
+            Body=data,
+            ContentType=content_type,
+        )
+    except ClientError as e:
+        logger.error("put_object failed: %s", e)
+        raise HTTPException(500, "Falha ao salvar no armazenamento") from e
+    return {"path": path, "size": len(data)}
+
 
 def get_object_data(path: str):
-    key = init_storage()
-    if not key:
-        raise HTTPException(500, "Armazenamento não inicializado")
-    resp = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60
-    )
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    try:
+        obj = s3_client.get_object(Bucket=MINIO_BUCKET, Key=path)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code", "")
+        if code in ("NoSuchKey", "404", "NotFound"):
+            raise HTTPException(404, "Imagem não encontrada") from e
+        logger.error("get_object failed: %s", e)
+        raise HTTPException(500, "Falha ao ler arquivo") from e
+    body = obj["Body"].read()
+    ct = obj.get("ContentType") or "application/octet-stream"
+    return body, ct
+
+
+def _thumbnail_resample():
+    try:
+        return Image.Resampling.LANCZOS
+    except AttributeError:
+        return Image.LANCZOS
+
+
+def process_image_to_webp(data: bytes) -> Tuple[bytes, str]:
+    """Redimensiona (máx. 1600px) e converte para WebP."""
+    try:
+        img = Image.open(io.BytesIO(data))
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+        if img.mode == "RGBA":
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[3])
+            img = background
+        else:
+            img = img.convert("RGB")
+    except Exception as e:
+        logger.warning("Image decode failed: %s", e)
+        raise HTTPException(
+            400,
+            "Não foi possível processar a imagem. Use JPG, PNG ou WebP.",
+        ) from e
+    if img.width > 1600 or img.height > 1600:
+        img.thumbnail((1600, 1600), _thumbnail_resample())
+    buf = io.BytesIO()
+    img.save(buf, format="WEBP", quality=82, method=6)
+    out = buf.getvalue()
+    return out, "image/webp"
 
 # ============ AUTH HELPERS ============
 def hash_password(password: str) -> str:
@@ -268,10 +318,10 @@ async def lifespan(app: FastAPI):
     await db.login_attempts.create_index("last_attempt")
 
     try:
-        init_storage()
-        logger.info("Storage initialized successfully")
+        ensure_minio_bucket()
+        logger.info("Storage (MinIO) initialized successfully")
     except Exception as e:
-        logger.error(f"Storage init failed: {e}")
+        logger.error("Storage init failed: %s", e)
 
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@autogestao.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -521,16 +571,14 @@ async def change_password(data: ChangePassword, current_user: dict = Depends(get
 @api_router.post("/services/upload-photo")
 async def upload_photo(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"]
-    content_type = file.content_type or "image/jpeg"
-    if content_type not in allowed_types and not content_type.startswith("image/"):
+    content_type_in = file.content_type or "image/jpeg"
+    if content_type_in not in allowed_types and not content_type_in.startswith("image/"):
         raise HTTPException(400, "Tipo de arquivo não permitido. Use imagens (JPG, PNG, WebP).")
     workspace_id = current_user.get("workspace_id", "default")
     user_id = current_user.get("id", "unknown")
-    ext = (file.filename or "photo.jpg").split(".")[-1].lower()
-    if ext not in ["jpg", "jpeg", "png", "webp", "gif", "heic"]:
-        ext = "jpg"
-    path = f"{APP_NAME}/services/{workspace_id}/{user_id}/{uuid.uuid4()}.{ext}"
-    data = await file.read()
+    raw = await file.read()
+    data, content_type = process_image_to_webp(raw)
+    path = f"{APP_NAME}/services/{workspace_id}/{user_id}/{uuid.uuid4()}.webp"
     result = put_object(path, data, content_type)
     return {"path": result["path"], "size": result.get("size", 0)}
 
@@ -1139,10 +1187,10 @@ async def verify_payment(current_user: dict = Depends(get_admin_user)):
     if not workspace:
         raise HTTPException(404, "Workspace não encontrado")
         
-    if workspace.get("status") != "active" and workspace.get("asaas_checkout_id"):
+    if workspace.get("status") not in ("active",):
         await db.workspaces.update_one({"_id": ObjectId(workspace_id)}, {"$set": {"status": "active"}})
         return {"status": "active", "message": "Pagamento verificado e ambiente ativado."}
-        
+
     return {"status": workspace.get("status", "pending"), "message": "Nenhuma alteração."}
 
 # ============ WEBHOOK ============
@@ -1175,6 +1223,23 @@ async def asaas_webhook(request: Request):
                 logger.info(f"Workspace ativado: {str(workspace['_id'])}")
             else:
                 logger.warning(f"Webhook: workspace não encontrado sub={subscription_id} customer={customer_id}")
+
+        elif event_type == "PAYMENT_OVERDUE":
+            payment_data = payload.get("payment", {})
+            subscription_id = payment_data.get("subscription")
+            customer_id = payment_data.get("customer")
+
+            workspace = None
+            if subscription_id:
+                workspace = await db.workspaces.find_one({"asaas_subscription_id": subscription_id})
+            if not workspace and customer_id:
+                workspace = await db.workspaces.find_one({"asaas_customer_id": customer_id})
+
+            if workspace:
+                await db.workspaces.update_one({"_id": workspace["_id"]}, {"$set": {"status": "overdue"}})
+                logger.info(f"Workspace marcado como inadimplente: {str(workspace['_id'])}")
+            else:
+                logger.warning(f"Webhook PAYMENT_OVERDUE: workspace não encontrado sub={subscription_id} customer={customer_id}")
 
         elif event_type == "SUBSCRIPTION_INACTIVATED":
             sub_id = payload.get("subscription", {}).get("id")

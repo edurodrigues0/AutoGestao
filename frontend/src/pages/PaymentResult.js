@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { CheckCircle, XCircle, Loader, LayoutDashboard, RefreshCcw, Wrench } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "../contexts/AuthContext";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function PaymentResult() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const isSuccess = location.pathname === "/billing/success";
 
   const [activationStatus, setActivationStatus] = useState("checking"); // checking | active | pending
@@ -26,6 +28,7 @@ export default function PaymentResult() {
         // Fallback para localhost: forçar simulação de webhook chamando verify-payment
         const verifyResp = await axios.post(`${API}/billing/verify-payment`, {}, { withCredentials: true });
         if (verifyResp.data?.status === "active") {
+          await refreshUser();
           setActivationStatus("active");
           return true;
         }
@@ -34,6 +37,7 @@ export default function PaymentResult() {
         const { data } = await axios.get(`${API}/auth/me`, { withCredentials: true });
         const status = data?.workspace?.status;
         if (status === "active") {
+          await refreshUser();
           setActivationStatus("active");
           return true;
         }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { AdminLayout } from "../components/Layout";
-import { CreditCard, CheckCircle, ExternalLink, AlertCircle, ArrowRight, Loader, Shield } from "lucide-react";
+import { CreditCard, CheckCircle, ExternalLink, AlertCircle, ArrowRight, Loader, Shield, XCircle } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -16,6 +17,9 @@ const PLANS = [
 ];
 
 export default function Billing() {
+  const location = useLocation();
+  const isExpired = new URLSearchParams(location.search).get("expired") === "1";
+
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -81,6 +85,17 @@ export default function Billing() {
     <AdminLayout title="Assinatura">
       <div className="max-w-xl space-y-5 animate-fade-in">
 
+        {/* Expired / overdue plan banner */}
+        {isExpired && (
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4" data-testid="expired-plan-banner">
+            <XCircle size={18} className="flex-shrink-0 mt-0.5 text-red-500" />
+            <div>
+              <p className="text-sm font-bold">Plano suspenso por falta de pagamento</p>
+              <p className="text-xs mt-0.5 text-red-700">Suas funcionalidades estão bloqueadas. Renove sua assinatura abaixo para restaurar o acesso.</p>
+            </div>
+          </div>
+        )}
+
         {/* Current plan card */}
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Plano Atual</p>
@@ -93,9 +108,15 @@ export default function Billing() {
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   subscription?.status === "active"
                     ? "bg-green-100 text-green-700"
+                    : subscription?.status === "inactive" || subscription?.status === "overdue"
+                    ? "bg-red-100 text-red-700"
                     : "bg-orange-100 text-orange-700"
                 }`} data-testid="subscription-status">
-                  {subscription?.status === "active" ? "Ativo" : "Pendente pagamento"}
+                  {subscription?.status === "active"
+                    ? "Ativo"
+                    : subscription?.status === "inactive" || subscription?.status === "overdue"
+                    ? "Suspenso"
+                    : "Pendente pagamento"}
                 </span>
               </div>
               <p className="text-sm text-slate-500">{formatCurrency(subscription?.plan_price)}/mês</p>
