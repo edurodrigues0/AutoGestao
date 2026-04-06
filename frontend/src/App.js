@@ -28,7 +28,7 @@ function LoadingScreen() {
   );
 }
 
-function ProtectedRoute({ children, allowedRoles, requireViewAll }) {
+function ProtectedRoute({ children, allowedRoles, requireViewAll, requireActiveWorkspace }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
@@ -37,6 +37,9 @@ function ProtectedRoute({ children, allowedRoles, requireViewAll }) {
   }
   if (requireViewAll && user.role === "mechanic" && (!user.permissions || !user.permissions.includes("view_all_services"))) {
     return <Navigate to="/mechanic/add-service" replace />;
+  }
+  if (requireActiveWorkspace && user.workspace?.status !== "active") {
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -82,18 +85,18 @@ function App() {
 
             {/* Admin/Unified Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={["admin", "mechanic"]} requireViewAll><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/services" element={<ProtectedRoute allowedRoles={["admin", "mechanic"]} requireViewAll><ServicesAdmin /></ProtectedRoute>} />
-            <Route path="/admin/mechanics" element={<ProtectedRoute allowedRoles={["admin"]}><MechanicsAdmin /></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><Reports /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
+            <Route path="/admin/services" element={<ProtectedRoute allowedRoles={["admin", "mechanic"]} requireViewAll requireActiveWorkspace><ServicesAdmin /></ProtectedRoute>} />
+            <Route path="/admin/mechanics" element={<ProtectedRoute allowedRoles={["admin"]} requireActiveWorkspace><MechanicsAdmin /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]} requireActiveWorkspace><Reports /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]} requireActiveWorkspace><Settings /></ProtectedRoute>} />
             <Route path="/admin/billing" element={<ProtectedRoute allowedRoles={["admin"]}><Billing /></ProtectedRoute>} />
-            <Route path="/admin/add-service" element={<ProtectedRoute allowedRoles={["admin", "mechanic"]}><AddService /></ProtectedRoute>} />
+            <Route path="/admin/add-service" element={<ProtectedRoute allowedRoles={["admin", "mechanic"]} requireActiveWorkspace><AddService /></ProtectedRoute>} />
 
             {/* Mechanic Legacy Routes & Specifics */}
             <Route path="/mechanic/dashboard" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/mechanic/add-service" element={<ProtectedRoute allowedRoles={["mechanic"]}><AddService /></ProtectedRoute>} />
-            <Route path="/mechanic/services" element={<ProtectedRoute allowedRoles={["mechanic"]}><MyServices /></ProtectedRoute>} />
-            <Route path="/mechanic/profile" element={<ProtectedRoute allowedRoles={["mechanic"]}><MechanicProfile /></ProtectedRoute>} />
+            <Route path="/mechanic/add-service" element={<ProtectedRoute allowedRoles={["mechanic"]} requireActiveWorkspace><AddService /></ProtectedRoute>} />
+            <Route path="/mechanic/services" element={<ProtectedRoute allowedRoles={["mechanic"]} requireActiveWorkspace><MyServices /></ProtectedRoute>} />
+            <Route path="/mechanic/profile" element={<ProtectedRoute allowedRoles={["mechanic"]} requireActiveWorkspace><MechanicProfile /></ProtectedRoute>} />
 
             {/* Payment Result - Public routes after Asaas redirect */}
             <Route path="/billing/success" element={<PaymentResult />} />

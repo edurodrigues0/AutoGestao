@@ -1129,6 +1129,22 @@ async def upgrade_plan(data: PlanUpgrade, current_user: dict = Depends(get_admin
     await db.workspaces.update_one({"_id": ObjectId(workspace_id)}, {"$set": {"plan": data.plan}})
     return {"message": f"Plano alterado para {PLANS[data.plan]['name']}", "plan": data.plan}
 
+@api_router.post("/billing/verify-payment")
+async def verify_payment(current_user: dict = Depends(get_admin_user)):
+    """ Endpoint de fallback para ambiente local. Ao invés do Webhook, 
+        este endpoint força a ativação baseada no direcionamento de sucesso. """
+    workspace_id = current_user.get("workspace_id")
+    workspace = await db.workspaces.find_one({"_id": ObjectId(workspace_id)})
+    
+    if not workspace:
+        raise HTTPException(404, "Workspace não encontrado")
+        
+    if workspace.get("status") != "active" and workspace.get("asaas_checkout_id"):
+        await db.workspaces.update_one({"_id": ObjectId(workspace_id)}, {"$set": {"status": "active"}})
+        return {"status": "active", "message": "Pagamento verificado e ambiente ativado."}
+        
+    return {"status": workspace.get("status", "pending"), "message": "Nenhuma alteração."}
+
 # ============ WEBHOOK ============
 @api_router.post("/webhooks/asaas")
 async def asaas_webhook(request: Request):

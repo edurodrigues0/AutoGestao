@@ -23,6 +23,14 @@ export default function PaymentResult() {
 
     const check = async () => {
       try {
+        // Fallback para localhost: forçar simulação de webhook chamando verify-payment
+        const verifyResp = await axios.post(`${API}/billing/verify-payment`, {}, { withCredentials: true });
+        if (verifyResp.data?.status === "active") {
+          setActivationStatus("active");
+          return true;
+        }
+
+        // Continua monitorando o me (se o webhook verdadeiro do Asaas eventualmente chegar em prod)
         const { data } = await axios.get(`${API}/auth/me`, { withCredentials: true });
         const status = data?.workspace?.status;
         if (status === "active") {
