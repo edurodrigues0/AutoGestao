@@ -1,0 +1,23 @@
+# Cloudflare Tunnel — copie para config.yml e preencha.
+#
+# 1) Instale: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/
+# 2) Login:    cloudflared tunnel login
+# 3) Crie:     cloudflared tunnel create autogestao
+# 4) Copie o UUID do túnel e o caminho do .json de credenciais exibidos no terminal.
+# 5) No painel Cloudflare: DNS → CNAME dos hostnames abaixo apontando para <tunnel-id>.cfargotunnel.com
+#    (ou use: cloudflared tunnel route dns autogestao api.seudominio.com)
+#
+# Inicie: cloudflared tunnel --config cloudflared/config.yml run
+
+tunnel: SUBSTITUA_PELO_UUID_DO_TUNEL
+credentials-file: SUBSTITUA_CAMINHO_ABS_OU_RELATIVO_PARA_UUID.json
+
+ingress:
+  # API FastAPI (webhook Asaas: https://api.SEU_DOMINIO/api/webhooks/asaas)
+  - hostname: api.SEU_DOMINIO
+    service: http://localhost:8001
+  # React (checkout redirect: FRONTEND_URL no backend/.env)
+  - hostname: app.SEU_DOMINIO
+    service: http://localhost:3000
+  # Obrigatório: regra final
+  - service: http_status:404

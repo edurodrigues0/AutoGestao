@@ -58,7 +58,7 @@ export function AdminLayout({ children, title }) {
           if (isMechanic && !allowedForMechanic) return null;
 
           const active = location.pathname === path;
-          const isRestricted = ["Serviços", "Mecânicos", "Relatórios", "Configurações"].includes(label);
+          const isRestricted = ["Serviços", "Mecânicos", "Relatórios", "Configurações", "Registrar Serviço"].includes(label);
           const isBlocked = isRestricted && user?.workspace?.status !== "active";
 
           return (
@@ -73,13 +73,12 @@ export function AdminLayout({ children, title }) {
                 setSidebarOpen(false);
               }}
               data-testid={`nav-${label.toLowerCase().replace(/\s/g, '-')}`}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-fast ${
-                active
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-fast ${active
                   ? "bg-blue-600 text-white"
                   : isBlocked
                     ? "text-slate-300 cursor-not-allowed opacity-50"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
+                }`}
               title={isBlocked ? "Finalize o pagamento para acessar" : ""}
             >
               <Icon size={18} />
@@ -89,14 +88,14 @@ export function AdminLayout({ children, title }) {
           );
         })}
         {user?.role === "mechanic" && (
-           <Link
-              to="/mechanic/add-service"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-fast"
-           >
-             <Plus size={18} />
-             Registrar Serviço
-           </Link>
+          <Link
+            to="/mechanic/add-service"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-fast"
+          >
+            <Plus size={18} />
+            Registrar Serviço
+          </Link>
         )}
       </nav>
 

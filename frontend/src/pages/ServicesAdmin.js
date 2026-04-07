@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AdminLayout } from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
-import { Search, Filter, Trash2, Image, ChevronDown, X, Edit2 } from "lucide-react";
+import { Search, Filter, Trash2, Image, ChevronDown, X, Edit2, Plus } from "lucide-react";
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -22,7 +22,7 @@ function PhotoModal({ path, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative max-w-xl w-full" onClick={e => e.stopPropagation()}>
+      <div className="relative max-w-xl w-full h-full" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow z-10">
           <X size={16} className="text-slate-700" />
         </button>
@@ -264,6 +264,7 @@ export default function ServicesAdmin() {
 }
 
 function EditServiceModal({ service, onClose }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({ client_name: service.client_name, description: service.description || "", value: service.value.toString() });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(service.photo_path || null);
@@ -314,7 +315,8 @@ function EditServiceModal({ service, onClose }) {
 
       onClose();
     } catch (err) {
-      setError(err.response?.data?.detail || "Erro ao atualizar");
+      const detail = err.response?.data?.detail;
+      setError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : detail || "Erro ao atualizar");
     } finally {
       setSaving(false);
     }
@@ -380,6 +382,14 @@ function EditServiceModal({ service, onClose }) {
             className="w-full h-12 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-fast shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
           >
             {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Salvar Alterações"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onClose()}
+            className="w-full h-12 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-fast shadow-lg shadow-red-100 flex items-center justify-center gap-2"
+          >
+            Cancelar
           </button>
         </form>
       </div>

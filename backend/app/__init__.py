@@ -1,0 +1,1 @@
+"""AutoGestão API application package."""

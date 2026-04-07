@@ -19,13 +19,16 @@ Documentação de requisitos e backlog mais detalhada: [`memory/PRD.md`](memory/
 
 ```
 AutoGestao/
-├── backend/          # API FastAPI (server.py)
+├── backend/
+│   ├── app/            # Pacote da API (main.py, routers, services, schemas)
+│   ├── server.py       # Atalho opcional; app em app.main:app
 │   ├── docker-compose.yaml   # MongoDB + MinIO local
 │   ├── requirements.txt
 │   └── tests/        # Testes pytest
 ├── frontend/         # SPA React
 │   ├── public/       # PWA (manifest, service worker)
 │   └── src/
+├── cloudflared/      # Cloudflare Tunnel (ex.: Asaas em dev) — ver cloudflared/README.md
 └── memory/           # PRD e notas do produto
 ```
 
@@ -90,7 +93,9 @@ Crie o arquivo **`backend/.env`** (não commite segredos). Variáveis usadas pel
 | `ASAAS_WALLET_ID` | Para Asaas | ID da carteira Asaas |
 | `ADMIN_EMAIL` | Não | Email do usuário admin seed (padrão: `admin@autogestao.com`) |
 | `ADMIN_PASSWORD` | Não | Senha do admin seed (padrão: `admin123`) |
-| `CORS_ORIGINS` | Não | Origem extra para CORS, se necessário |
+| `CORS_ORIGINS` | Não | Origens extras para CORS, **separadas por vírgula** (nunca `*` com cookies). A API sempre inclui `FRONTEND_URL` e `http://localhost:3000` |
+| `COOKIE_SECURE` | Não | `true`/`false` — cookie com flag `Secure` (obrigatório em HTTPS com túneis quando o front está em outro domínio) |
+| `COOKIE_SAMESITE` | Não | `lax` (padrão local), `strict` ou `none`. Com front e API em **origens HTTPS diferentes**, use `none` (a API força `Secure` nesse caso) |
 
 Exemplo mínimo para desenvolvimento local (ajuste `MONGO_URL` ao seu MongoDB):
 
@@ -112,10 +117,10 @@ MINIO_USE_SSL=false
 Na pasta `backend`, com o venv ativo:
 
 ```bash
-uvicorn server:app --reload --host 127.0.0.1 --port 8001
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-Alternativa (porta padrão do Uvicorn é **8000**):
+Alternativa (executa o mesmo app com reload):
 
 ```bash
 python server.py
@@ -158,7 +163,7 @@ Sirva a pasta `frontend/build` com o servidor estático da sua preferência; con
 
 ## Testes automatizados (backend)
 
-Com a API no ar e o mesmo usuário admin configurado (`ADMIN_EMAIL` / `ADMIN_PASSWORD` ou padrões), na pasta `backend`:
+Com a API no ar (`uvicorn app.main:app --host 127.0.0.1 --port 8001`) e o mesmo usuário admin configurado (`ADMIN_EMAIL` / `ADMIN_PASSWORD` ou padrões), na pasta `backend`:
 
 ```bash
 set REACT_APP_BACKEND_URL=http://127.0.0.1:8001
@@ -167,8 +172,14 @@ pytest tests/ -v
 
 No PowerShell, use `$env:REACT_APP_BACKEND_URL="http://127.0.0.1:8001"` antes do `pytest`.
 
+## Túnel HTTPS (Asaas / webhooks em desenvolvimento)
+
+Para testar checkout e webhook do Asaas sem deploy, use um túnel até `localhost`. O repositório inclui instruções para **Cloudflare Tunnel** em [`cloudflared/README.md`](cloudflared/README.md) (e um exemplo [`cloudflared/config.example.yml`](cloudflared/config.example.yml)). Há também [`ngrok.yaml`](ngrok.yaml) na raiz para ngrok com portas 3000/8001.
+
+**Front e API em domínios HTTPS diferentes** (ex.: ngrok no React e Cloudflare na API): o navegador não envia cookies `SameSite=Lax` em `POST` cross-site, o que causa 401 em rotas como `/api/billing/checkout`. Configure `FRONTEND_URL` com a URL pública exata do frontend, liste qualquer origem extra em `CORS_ORIGINS` (vírgulas, sem `*`), e no backend defina `COOKIE_SAMESITE=none` e `COOKIE_SECURE=true` (HTTPS nas duas pontas). O frontend deve usar requisições com credenciais (ex.: `axios` com `withCredentials: true`) para o domínio da API.
+
 ## Notas
 
-- **Asaas**: checkout e webhooks dependem de URLs públicas em produção; em ambiente local, ferramentas como túnel HTTPS podem ser necessárias para testar webhooks.
+- **Asaas**: checkout e webhooks dependem de URLs públicas em produção; em ambiente local, use Cloudflare Tunnel ou ngrok conforme os guias acima.
 - **MinIO**: o backend precisa alcançar o endpoint configurado em `MINIO_*` (subir o serviço com Docker ou apontar para um MinIO remoto). As fotos são salvas em WebP (máx. 1600 px) para economizar espaço.
 - Mais detalhes de planos, fluxos e backlog: [`memory/PRD.md`](memory/PRD.md).
