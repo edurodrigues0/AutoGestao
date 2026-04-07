@@ -34,7 +34,7 @@ export function AdminLayout({ children, title }) {
     navigate("/login");
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ forMobileDrawer = false }) => (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-6 border-b border-slate-200">
@@ -56,6 +56,9 @@ export function AdminLayout({ children, title }) {
           const isMechanic = user?.role === "mechanic";
           const allowedForMechanic = ["Dashboard", "Serviços"].includes(label);
           if (isMechanic && !allowedForMechanic) return null;
+
+          // Admin: "Registrar Serviço" só no menu móvel (telas menores)
+          if (!forMobileDrawer && !isMechanic && label === "Registrar Serviço") return null;
 
           const active = location.pathname === path;
           const isRestricted = ["Serviços", "Mecânicos", "Relatórios", "Configurações", "Registrar Serviço"].includes(label);
@@ -119,7 +122,7 @@ export function AdminLayout({ children, title }) {
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col flex-shrink-0">
-        <SidebarContent />
+        <SidebarContent forMobileDrawer={false} />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -133,7 +136,7 @@ export function AdminLayout({ children, title }) {
                 <X size={20} className="text-slate-600" />
               </button>
             </div>
-            <SidebarContent />
+            <SidebarContent forMobileDrawer={true} />
           </aside>
         </div>
       )}
