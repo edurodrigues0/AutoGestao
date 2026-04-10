@@ -111,7 +111,7 @@ SaaS multi-tenant para gestão de serviços de auto mecânicas com controle indi
 - [ ] Tags/categorias de serviço
 
 ### Refatoração
-- [ ] server.py com 1000+ linhas — separar em routes/, models/, services/
+- [X] server.py com 1000+ linhas — separar em routes/, models/, services/
 
 ## Notas Técnicas
 - Storage: Emergent Object Storage via EMERGENT_LLM_KEY

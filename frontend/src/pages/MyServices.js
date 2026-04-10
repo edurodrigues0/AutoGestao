@@ -11,7 +11,8 @@ function formatCurrency(value) {
 
 function PhotoModal({ path, onClose }) {
   const [src, setSrc] = useState(null);
-  useEffect(() => {
+
+  useEffect(function loadPhotoInModalOnMount() {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })
@@ -71,7 +72,7 @@ export default function MyServices() {
         {/* List */}
         {loading ? (
           <div className="space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
+            {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
           </div>
         ) : services.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
@@ -103,8 +104,8 @@ export default function MyServices() {
                 </div>
                 <div className="text-right flex-shrink-0 flex flex-col justify-between items-end h-full">
                   <p className="text-base font-bold text-slate-900">{formatCurrency(s.value)}</p>
-                  <button 
-                    onClick={() => setEditModal(s)} 
+                  <button
+                    onClick={() => setEditModal(s)}
                     className="text-xs text-blue-600 flex items-center gap-1 mt-auto bg-blue-50 px-2 py-1 rounded-md"
                   >
                     Editar
@@ -180,44 +181,44 @@ function EditServiceModal({ service, onClose }) {
           <h2 className="text-lg font-bold text-slate-900" style={{ fontFamily: 'Outfit' }}>Editar Serviço</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg"><X size={20} className="text-slate-500" /></button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">{error}</div>}
-          
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Cliente</label>
-            <input 
-              value={form.client_name} 
-              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} 
-              className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-fast" 
-              required 
+            <input
+              value={form.client_name}
+              onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
+              className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-fast"
+              required
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Descrição</label>
-            <textarea 
-              value={form.description} 
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} 
+            <textarea
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none transition-fast" 
+              className="w-full p-4 rounded-xl border border-slate-200 focus:border-blue-500 outline-none resize-none transition-fast"
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Foto</label>
             <div className="flex items-center gap-3">
-               <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><span className="text-[10px] font-bold">CÂMERA</span></button>
-               <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><span className="text-[10px] font-bold">GALERIA</span></button>
-               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
-               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+              <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex-1 h-20 bg-blue-50 text-blue-600 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-blue-200"><span className="text-[10px] font-bold">CÂMERA</span></button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 h-20 bg-slate-50 text-slate-500 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200"><span className="text-[10px] font-bold">GALERIA</span></button>
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
             </div>
             {photoPreview && <p className="text-[10px] text-green-600 font-bold mt-2">✓ Foto selecionada</p>}
           </div>
 
-          <button 
-            type="submit" 
-            disabled={saving} 
+          <button
+            type="submit"
+            disabled={saving}
             className="w-full h-12 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-fast shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
           >
             {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Salvar Alterações"}
@@ -234,7 +235,7 @@ function ServiceThumb({ path }) {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { if (url) URL.revokeObjectURL(url); };
   }, [path]);
   if (!src) return <div className="w-full h-full bg-slate-200 animate-pulse-bg"></div>;

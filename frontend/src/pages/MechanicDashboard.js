@@ -16,23 +16,23 @@ export default function MechanicDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
-    try {
-      const { data: res } = await axios.get(`${API}/dashboard/mechanic`, { withCredentials: true });
-      setData(res);
-    } catch (err) {
-      console.error("Dashboard error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const now = new Date();
   const monthName = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  useEffect(function loadDashboardOnMount() {
+    async function fetchDashboard() {
+      try {
+        const { data: res } = await axios.get(`${API}/dashboard/mechanic`, { withCredentials: true });
+        setData(res);
+      } catch (err) {
+        console.error("Dashboard error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboard();
+  }, []);
 
   if (loading) {
     return (
@@ -56,7 +56,7 @@ export default function MechanicDashboard() {
             <div>
               <p className="font-bold text-slate-900 text-sm" style={{ fontFamily: 'Outfit' }}>Oficina com Pagamento Pendente</p>
               <p className="text-slate-500 text-xs mt-0.5">
-                O acesso às funcionalidades de registro e listagem de serviços está temporariamente bloqueado. 
+                O acesso às funcionalidades de registro e listagem de serviços está temporariamente bloqueado.
                 Contate o administrador da oficina.
               </p>
             </div>
@@ -167,7 +167,7 @@ function ServiceThumb({ path }) {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { if (url) URL.revokeObjectURL(url); };
   }, [path]);
   if (!src) return <div className="w-full h-full bg-slate-200 animate-pulse-bg"></div>;

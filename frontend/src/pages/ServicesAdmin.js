@@ -12,7 +12,8 @@ function formatCurrency(value) {
 
 function PhotoModal({ path, onClose }) {
   const [src, setSrc] = useState(null);
-  useEffect(() => {
+
+  useEffect(function loadPhotoInModalOnMount() {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })

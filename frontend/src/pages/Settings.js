@@ -13,21 +13,6 @@ export default function Settings() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    axios.get(`${API}/settings`, { withCredentials: true })
-      .then(({ data }) => {
-        setSettings(data);
-        setForm({
-          name: data.name || "",
-          phone: data.phone || "",
-          commission_type: data.commission_type || "fixed",
-          commission_percentage: data.commission_percentage != null ? String(data.commission_percentage) : "10"
-        });
-      })
-      .catch(() => setError("Erro ao carregar configurações"))
-      .finally(() => setLoading(false));
-  }, []);
-
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSave = async (e) => {
@@ -52,11 +37,26 @@ export default function Settings() {
     }
   };
 
+  useEffect(function loadSettingsOnMount() {
+    axios.get(`${API}/settings`, { withCredentials: true })
+      .then(({ data }) => {
+        setSettings(data);
+        setForm({
+          name: data.name || "",
+          phone: data.phone || "",
+          commission_type: data.commission_type || "fixed",
+          commission_percentage: data.commission_percentage != null ? String(data.commission_percentage) : "10"
+        });
+      })
+      .catch(() => setError("Erro ao carregar configurações"))
+      .finally(() => setLoading(false));
+  }, []);
+
   if (loading) {
     return (
       <AdminLayout title="Configurações">
         <div className="max-w-lg space-y-4">
-          {[1,2,3].map(i => <div key={i} className="h-16 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
+          {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-200 rounded-xl animate-pulse-bg"></div>)}
         </div>
       </AdminLayout>
     );

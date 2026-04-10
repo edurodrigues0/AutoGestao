@@ -12,12 +12,6 @@ export default function Reports() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    axios.get(`${API}/mechanics`, { withCredentials: true })
-      .then(({ data }) => setMechanics(data.mechanics || []))
-      .catch(() => {});
-  }, []);
-
   const handleExport = async (format) => {
     setError("");
     setSuccess("");
@@ -51,6 +45,12 @@ export default function Reports() {
   };
 
   const handleChange = (e) => setFilters(f => ({ ...f, [e.target.name]: e.target.value }));
+
+  useEffect(function loadMechanicsOnMount() {
+    axios.get(`${API}/mechanics`, { withCredentials: true })
+      .then(({ data }) => setMechanics(data.mechanics || []))
+      .catch(() => { });
+  }, []);
 
   return (
     <AdminLayout title="Relatórios">

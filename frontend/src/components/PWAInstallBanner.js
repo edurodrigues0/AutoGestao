@@ -15,7 +15,25 @@ export default function PWAInstallBanner() {
   const isInStandaloneMode = () =>
     "standalone" in window.navigator && window.navigator.standalone;
 
-  useEffect(() => {
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setShowAndroidBanner(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    setShowAndroidBanner(false);
+    setShowIOSBanner(false);
+    sessionStorage.setItem("pwa-banner-dismissed", "1");
+  };
+
+
+  useEffect(function checkPWAInstallBannerOnMount() {
     // Don't show if already dismissed or already installed
     if (sessionStorage.getItem("pwa-banner-dismissed")) return;
     if (isInStandaloneMode()) return;
@@ -36,23 +54,6 @@ export default function PWAInstallBanner() {
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setShowAndroidBanner(false);
-    }
-    setDeferredPrompt(null);
-  };
-
-  const handleDismiss = () => {
-    setDismissed(true);
-    setShowAndroidBanner(false);
-    setShowIOSBanner(false);
-    sessionStorage.setItem("pwa-banner-dismissed", "1");
-  };
 
   if (dismissed) return null;
 

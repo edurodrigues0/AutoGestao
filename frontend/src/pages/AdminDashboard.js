@@ -44,20 +44,22 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
-    try {
-      const { data: res } = await axios.get(`${API}/dashboard/admin`, { withCredentials: true });
-      setData(res);
-    } catch (err) {
-      console.error("Dashboard error:", err);
-    } finally {
-      setLoading(false);
+  useEffect(function loadDashboardOnMount() {
+    async function fetchDashboard() {
+      try {
+        const { data: res } = await axios.get(`${API}/dashboard/admin`, {
+          withCredentials: true,
+        });
+        setData(res);
+      } catch (err) {
+        console.error("Dashboard error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+
+    fetchDashboard();
+  }, []);
 
   if (loading) {
     return (

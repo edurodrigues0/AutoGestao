@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { AdminLayout } from "../components/Layout";
 import { CreditCard, CheckCircle, ExternalLink, AlertCircle, ArrowRight, Loader, Shield, XCircle } from "lucide-react";
@@ -27,16 +27,6 @@ export default function Billing() {
   const [upgradeLoading, setUpgradeLoading] = useState(null);
   const [upgradeSuccess, setUpgradeSuccess] = useState("");
 
-  const load = async () => {
-    try {
-      const { data } = await axios.get(`${API}/billing/subscription`, { withCredentials: true });
-      setSubscription(data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, []);
-
   const handleCheckout = async () => {
     setError("");
     setCheckoutLoading(true);
@@ -60,7 +50,7 @@ export default function Billing() {
     try {
       await axios.put(`${API}/billing/plan`, { plan: planId }, { withCredentials: true });
       setUpgradeSuccess(`Plano alterado para ${PLANS.find(p => p.id === planId)?.name}!`);
-      load();
+      loadSubscription();
     } catch (err) {
       const detail = err.response?.data?.detail;
       alert(typeof detail === "string" ? detail : "Erro ao alterar plano");
@@ -68,6 +58,27 @@ export default function Billing() {
       setUpgradeLoading(null);
     }
   };
+
+
+  const loadSubscription = useCallback(function fetchSubscriptionOnMount() {
+    async function fetchSubscription() {
+      try {
+        const { data } = await axios.get(`${API}/billing/subscription`, { withCredentials: true });
+
+        setSubscription(data);
+      } catch (err) {
+        console.error("Subscription error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSubscription();
+  }, []);
+
+  useEffect(function fetchSubscriptionOnMount() {
+    loadSubscription();
+  }, [loadSubscription]);
 
   if (loading) {
     return (
@@ -105,18 +116,17 @@ export default function Billing() {
                 <span className="text-xl font-bold text-slate-900" style={{ fontFamily: "Outfit" }}>
                   {subscription?.plan_name}
                 </span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  subscription?.status === "active"
-                    ? "bg-green-100 text-green-700"
-                    : subscription?.status === "inactive" || subscription?.status === "overdue"
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${subscription?.status === "active"
+                  ? "bg-green-100 text-green-700"
+                  : subscription?.status === "inactive" || subscription?.status === "overdue"
                     ? "bg-red-100 text-red-700"
                     : "bg-orange-100 text-orange-700"
-                }`} data-testid="subscription-status">
+                  }`} data-testid="subscription-status">
                   {subscription?.status === "active"
                     ? "Ativo"
                     : subscription?.status === "inactive" || subscription?.status === "overdue"
-                    ? "Suspenso"
-                    : "Pendente pagamento"}
+                      ? "Suspenso"
+                      : "Pendente pagamento"}
                 </span>
               </div>
               <p className="text-sm text-slate-500">{formatCurrency(subscription?.plan_price)}/mês</p>
