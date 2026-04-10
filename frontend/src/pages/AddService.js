@@ -260,8 +260,10 @@ function AddServiceContent() {
 
 export default function AddService() {
   const { user } = useAuth();
+
   if (user?.role === "mechanic") {
     return <MechanicLayout title="Registrar Serviço"><AddServiceContent /></MechanicLayout>;
   }
+
   return <AdminLayout title="Registrar Serviço"><AddServiceContent /></AdminLayout>;
 }

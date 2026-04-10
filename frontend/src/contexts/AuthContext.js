@@ -1,5 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useTheme } from "next-themes";
 import axios from "axios";
+
+const THEME_STORAGE_KEY = "autogestao-theme";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 axios.defaults.withCredentials = true;
@@ -7,6 +10,7 @@ axios.defaults.withCredentials = true;
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { setTheme } = useTheme();
   const [user, setUser] = useState(null); // null=loading, false=not authed, obj=authed
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +24,10 @@ export function AuthProvider({ children }) {
     try {
       await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     } catch { }
+    try {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } catch { }
+    setTheme("light");
     setUser(false);
   };
 

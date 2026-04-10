@@ -76,6 +76,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-6 animate-fade-in">
+        {/* Pagamento Pendente */}
         {user?.workspace?.status !== "active" && (
           <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
             <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -193,7 +194,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Recent Services */}
+        {/* Serviços Recentes */}
         <div className="bg-white border border-slate-200 rounded-xl">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-900" style={{ fontFamily: 'Outfit' }}>Serviços Recentes</h2>
@@ -226,7 +227,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {/* Ações Rápidas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link to={user?.role === "admin" ? "/admin/add-service" : "/mechanic/add-service"} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 transition-fast card-hover group" data-testid="add-service-quick">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-fast shadow-lg shadow-blue-100">

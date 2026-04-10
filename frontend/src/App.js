@@ -1,4 +1,5 @@
 import "@/App.css";
+import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import PWAInstallBanner from "./components/PWAInstallBanner";
@@ -73,7 +74,14 @@ function PublicRoute({ children }) {
 
 function App() {
   return (
-    <AuthProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      storageKey="autogestao-theme"
+      disableTransitionOnChange
+    >
+      <AuthProvider>
       <div className="app-container">
         <BrowserRouter>
           <PWAInstallBanner />
@@ -110,7 +118,8 @@ function App() {
           </Routes>
         </BrowserRouter>
       </div>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
