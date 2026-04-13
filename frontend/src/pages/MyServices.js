@@ -54,7 +54,7 @@ export default function MyServices() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(function loadServicesOnMount() { load(); }, [load]);
 
   const totalValue = services.reduce((acc, s) => acc + (s.value || 0), 0);
 
@@ -231,13 +231,15 @@ function EditServiceModal({ service, onClose }) {
 
 function ServiceThumb({ path }) {
   const [src, setSrc] = useState(null);
-  useEffect(() => {
+
+  useEffect(function loadPhotoOnMount() {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })
       .catch(() => { });
     return () => { if (url) URL.revokeObjectURL(url); };
   }, [path]);
+
   if (!src) return <div className="w-full h-full bg-slate-200 animate-pulse-bg"></div>;
   return <img src={src} alt="" className="w-full h-full object-cover" />;
 }

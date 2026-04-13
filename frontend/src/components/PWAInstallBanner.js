@@ -51,6 +51,7 @@ export default function PWAInstallBanner() {
       setDeferredPrompt(e);
       setShowAndroidBanner(true);
     };
+
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);

@@ -16,7 +16,7 @@ export default function PaymentResult() {
   const [attempts, setAttempts] = useState(0);
 
   // Poll workspace status after successful payment
-  useEffect(() => {
+  useEffect(function pollActivationStatusOnSuccess() {
     if (!isSuccess) return;
 
     let tries = 0;

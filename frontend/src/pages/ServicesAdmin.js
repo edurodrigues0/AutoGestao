@@ -54,24 +54,29 @@ export default function ServicesAdmin() {
   const loadServices = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (filters.mechanic_id) params.mechanic_id = filters.mechanic_id;
-      if (filters.client_name) params.client_name = filters.client_name;
-      if (filters.start_date) params.start_date = filters.start_date;
-      if (filters.end_date) params.end_date = filters.end_date;
-      const { data } = await axios.get(`${API}/services`, { params, withCredentials: true });
+      const { data } = await axios.get(`${API}/services`, { withCredentials: true });
       setServices(data.services || []);
       setTotal(data.total || 0);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [filters]);
+  }, []);
 
-  useEffect(() => { loadServices(); }, [loadServices]);
-
-  useEffect(() => {
-    axios.get(`${API}/mechanics`, { withCredentials: true })
-      .then(({ data }) => setMechanics(data.mechanics || []))
-      .catch(() => { });
+  useEffect(function loadMechanicsAndServicesOnMount() {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      axios.get(`${API}/mechanics`, { withCredentials: true }),
+      axios.get(`${API}/services`, { withCredentials: true }),
+    ])
+      .then(([mechRes, svcRes]) => {
+        if (cancelled) return;
+        setMechanics(mechRes.data.mechanics || []);
+        setServices(svcRes.data.services || []);
+        setTotal(svcRes.data.total || 0);
+      })
+      .catch((err) => { console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const handleDelete = async (id) => {

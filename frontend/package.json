@@ -59,6 +59,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
+    "preview": "npx serve -s build",
     "test": "craco test"
   },
   "browserslist": {

@@ -163,7 +163,7 @@ export default function MechanicDashboard() {
 
 function ServiceThumb({ path }) {
   const [src, setSrc] = useState(null);
-  useEffect(() => {
+  useEffect(function loadServiceThumbPhotoOnMount() {
     let url;
     axios.get(`${API}/services/photo/${path}`, { responseType: "blob", withCredentials: true })
       .then(r => { url = URL.createObjectURL(r.data); setSrc(url); })

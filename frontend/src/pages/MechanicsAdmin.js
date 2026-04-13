@@ -262,7 +262,7 @@ export default function MechanicsAdmin() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(function loadMechanicsAndSubscriptionOnMount() { load(); }, []);
 
   const handleToggleActive = async (m) => {
     setTogglingId(m.id);

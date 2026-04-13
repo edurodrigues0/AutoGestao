@@ -63,16 +63,23 @@ const Carousel = React.forwardRef((
     }
   }, [scrollPrev, scrollNext])
 
-  React.useEffect(() => {
-    if (!api || !setApi) {
+  function assignApi() {
+    if (!api) return false;
+    if (!setApi) return false;
+
+    return true;
+  }
+
+  React.useEffect(function assignApiOnMount() {
+    if (!assignApi()) {
       return
     }
 
     setApi(api)
-  }, [api, setApi])
+  }, [assignApi, api, setApi])
 
-  React.useEffect(() => {
-    if (!api) {
+  React.useEffect(function assignApiAndOnSelectOnMount() {
+    if (!assignApi()) {
       return
     }
 
@@ -83,7 +90,7 @@ const Carousel = React.forwardRef((
     return () => {
       api?.off("select", onSelect)
     };
-  }, [api, onSelect])
+  }, [assignApi, api, onSelect])
 
   return (
     <CarouselContext.Provider
@@ -110,6 +117,7 @@ const Carousel = React.forwardRef((
     </CarouselContext.Provider>
   );
 })
+
 Carousel.displayName = "Carousel"
 
 const CarouselContent = React.forwardRef(({ className, ...props }, ref) => {
