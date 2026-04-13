@@ -28,6 +28,11 @@ AutoGestao/
 ├── frontend/         # SPA React
 │   ├── public/       # PWA (manifest, service worker)
 │   └── src/
+│       ├── pages/       # Rotas/páginas
+│       ├── components/  # Layout, PWA; UI base em components/ui (Radix + estilos do projeto)
+│       ├── contexts/    # Auth (sessão JWT)
+│       ├── hooks/       # Hooks reutilizáveis (ex.: toast)
+│       └── lib/         # Utilitários (ex.: cn / classnames)
 ├── cloudflared/      # Cloudflare Tunnel (ex.: Asaas em dev) — ver cloudflared/README.md
 └── memory/           # PRD e notas do produto
 ```
@@ -145,6 +150,8 @@ REACT_APP_BACKEND_URL=http://localhost:8001
 
 O valor deve coincidir com a URL onde o FastAPI está escutando (incluindo porta e `http`/`https`).
 
+As chamadas à API usam **axios** com `withCredentials: true` para enviar o cookie JWT httpOnly.
+
 ### Executar em desenvolvimento
 
 ```bash
@@ -164,6 +171,8 @@ Sirva a pasta `frontend/build` com o servidor estático da sua preferência; con
 ## Testes automatizados (backend)
 
 Com a API no ar (`uvicorn app.main:app --host 127.0.0.1 --port 8001`) e o mesmo usuário admin configurado (`ADMIN_EMAIL` / `ADMIN_PASSWORD` ou padrões), na pasta `backend`:
+
+Os testes de integração em `backend/tests/` usam a variável **`REACT_APP_BACKEND_URL`** como URL base da API (mesmo nome do frontend por convenção do projeto), não o hostname do React.
 
 ```bash
 set REACT_APP_BACKEND_URL=http://127.0.0.1:8001
